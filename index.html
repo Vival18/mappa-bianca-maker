@@ -2,17 +2,13 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <title>Mappa Bianca – WebApp con Clustering</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <!-- Leaflet CSS + JS -->
-<link rel="stylesheet" href="libs/leaflet.css" />
-<script src="libs/leaflet.js"></script>
-<!-- Nuove librerie per il caching offline -->
-<script src="https://unpkg.com/pouchdb@5.2.0/dist/pouchdb.js"></script>
-<script src="https://unpkg.com/leaflet.tilelayer.pouchdbcached@latest/L.TileLayer.PouchDBCached.js"></script>
-<link rel="stylesheet" href="libs/MarkerCluster.css" />
-<link rel="stylesheet" href="libs/MarkerCluster.Default.css" />
-<script src="libs/leaflet.markercluster.js"></script>
+    <title>Mappa Bianca – WebApp</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- MarkerCluster CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -85,11 +81,30 @@
             font-weight: bold;
             backdrop-filter: blur(4px);
         }
+
+        /* Messaggio offline (opzionale) */
+        .offline-msg {
+            position: absolute;
+            top: 70px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1001;
+            background: rgba(0,0,0,0.7);
+            color: #ffaa00;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            backdrop-filter: blur(4px);
+            display: none;
+            white-space: nowrap;
+        }
         
         @media (max-width: 600px) {
             .filter-btn { padding: 4px 10px; font-size: 12px; }
             .legend { font-size: 10px; bottom: 60px; }
             .counter { bottom: 60px; }
+            .offline-msg { top: 70px; font-size: 10px; white-space: nowrap; }
         }
     </style>
 </head>
@@ -98,12 +113,17 @@
     <div class="filter-bar" id="filterBar"></div>
     <div class="legend" id="legend"></div>
     <div class="counter" id="counter">Caricamento...</div>
+    <div class="offline-msg" id="offlineMsg">⚠️ Modalità offline – alcune aree potrebbero non essere visibili</div>
 
+    <!-- Script -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+    
     <script>
-        // Mappa interattiva con clustering
+        // Mappa Bianca WebApp – versione stabile (online/offline marker, tile solo online)
         let map;
-        let markerClusterGroup;  // sarà il gruppo di cluster
-        let allMarkers = [];     // array di oggetti { marker, tipologia }
+        let markerClusterGroup;
+        let allMarkers = [];
         let currentFilter = 'Tutti';
 
         // Mappa colori tipologia
@@ -116,7 +136,7 @@
             'Enogastronomico': '#f57c00'
         };
         
-        // Funzione per creare icona circolare colorata
+        // Icona circolare colorata
         function getColoredIcon(color) {
             return L.divIcon({
                 html: `<div style="background-color: ${color}; width: 28px; height: 28px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 4px rgba(0,0,0,0.5);"></div>`,
@@ -126,59 +146,43 @@
             });
         }
 
-        // Inizializza mappa
-let tileLayer;
-
-function initMap(centerLat, centerLng, zoom) {
-    map = L.map('map').setView([centerLat, centerLng], zoom);
-    tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OSM',
-        useCache: true,      // attiva caching
-        crossOrigin: true    // necessario per PouchDB
-    }).addTo(map);
+        // Inizializza mappa (centro su Rivoli Veronese di default)
+        function initMap(centerLat = 45.57249, centerLng = 10.81178, zoom = 14) {
+            map = L.map('map').setView([centerLat, centerLng], zoom);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            }).addTo(map);
             
-            // Crea il cluster group (con opzioni di personalizzazione, se vuoi)
             markerClusterGroup = L.markerClusterGroup({
-                showCoverageOnHover: false,   // evita di mostrare il cerchio di copertura
-                maxClusterRadius: 80,         // raggio massimo per raggruppare
-                disableClusteringAtZoom: 18   // disabilita clustering a zoom molto alto
+                showCoverageOnHover: false,
+                maxClusterRadius: 80,
+                disableClusteringAtZoom: 18
             });
             map.addLayer(markerClusterGroup);
         }
 
-        // Aggiorna contatore: conta marker attualmente nel cluster group
+        // Aggiorna contatore marker visibili
         function updateCounter() {
-            // markerClusterGroup.getLayers() restituisce tutti i marker (non i cluster)
             const visible = markerClusterGroup.getLayers().length;
             document.getElementById('counter').innerHTML = `📍 ${visible} / ${allMarkers.length} punti`;
         }
 
-        // Filtra i marker: rimuove tutti dal cluster, poi aggiunge solo quelli della categoria selezionata
+        // Filtra per categoria
         function filterMarkers(category) {
             currentFilter = category;
-            // Rimuove tutti i marker dal cluster group (più efficiente che clearLayers)
             markerClusterGroup.clearLayers();
-            
-            // Aggiunge i marker corrispondenti
             allMarkers.forEach(item => {
                 let match = false;
-                if (category === 'Tutti') {
-                    match = true;
-                } else if (category === 'Storico' && (item.tipologia === 'Storico' || item.tipologia === 'Archeologico')) {
-                    match = true;
-                } else if (category === 'Paesaggistico' && (item.tipologia === 'Paesaggistico' || item.tipologia === 'Naturalistico')) {
-                    match = true;
-                } else if (item.tipologia === category) {
-                    match = true;
-                }
-                if (match) {
-                    markerClusterGroup.addLayer(item.marker);
-                }
+                if (category === 'Tutti') match = true;
+                else if (category === 'Storico' && (item.tipologia === 'Storico' || item.tipologia === 'Archeologico')) match = true;
+                else if (category === 'Paesaggistico' && (item.tipologia === 'Paesaggistico' || item.tipologia === 'Naturalistico')) match = true;
+                else if (item.tipologia === category) match = true;
+                if (match) markerClusterGroup.addLayer(item.marker);
             });
             updateCounter();
         }
 
-        // Costruisce i filtri dinamici in base alle tipologie presenti (normalizzate)
+        // Costruisce bottoni filtro dinamicamente
         function buildFilters(uniqueTypes) {
             const filterDiv = document.getElementById('filterBar');
             filterDiv.innerHTML = '';
@@ -197,7 +201,7 @@ function initMap(centerLat, centerLng, zoom) {
             });
         }
 
-        // Costruisce legenda (mostra solo tipologie normalizzate presenti)
+        // Costruisce legenda
         function buildLegend(uniqueTypes) {
             const legendDiv = document.getElementById('legend');
             legendDiv.innerHTML = '<strong>Legenda</strong><br>';
@@ -207,13 +211,24 @@ function initMap(centerLat, centerLng, zoom) {
             });
         }
 
-        // Carica markers.json e avvia l'app
+        // Controllo offline e mostra messaggio
+        function checkOffline() {
+            if (!navigator.onLine) {
+                document.getElementById('offlineMsg').style.display = 'block';
+            } else {
+                document.getElementById('offlineMsg').style.display = 'none';
+            }
+        }
+        window.addEventListener('online', checkOffline);
+        window.addEventListener('offline', checkOffline);
+        
+        // Caricamento dati markers.json
         fetch('markers.json')
             .then(response => response.json())
             .then(data => {
                 if (!data.length) throw new Error('Nessun marker');
                 
-                // Normalizza tipologie e raccoglie quelle uniche
+                // Normalizza tipologie
                 const typesSet = new Set();
                 data.forEach(m => {
                     let t = m.tipologia;
@@ -224,20 +239,20 @@ function initMap(centerLat, centerLng, zoom) {
                 });
                 const uniqueTypes = Array.from(typesSet);
                 
-                // Decide centro mappa: primo marker valido o Rivoli
+                // Centro mappa sul primo marker (se esiste)
                 let centerLat = 45.57249, centerLng = 10.81178;
-                if (data.length > 0 && data[0].lat && data[0].lng) {
+                if (data.length && data[0].lat && data[0].lng) {
                     centerLat = parseFloat(data[0].lat);
                     centerLng = parseFloat(data[0].lng);
                 }
                 initMap(centerLat, centerLng, 14);
+                checkOffline();
                 
-                // Crea marker e popup
+                // Crea marker
                 data.forEach(m => {
                     const lat = parseFloat(m.lat);
                     const lng = parseFloat(m.lng);
                     if (isNaN(lat) || isNaN(lng)) return;
-                    
                     const tipologia = m.tipologiaNorm;
                     const color = colorMap[tipologia] || '#3388ff';
                     const icon = getColoredIcon(color);
@@ -253,7 +268,6 @@ function initMap(centerLat, centerLng, zoom) {
                     allMarkers.push({ marker, tipologia });
                 });
                 
-                // Aggiungi tutti i marker al cluster (inizialmente nessun filtro)
                 filterMarkers('Tutti');
                 buildFilters(uniqueTypes);
                 buildLegend(uniqueTypes);
@@ -263,8 +277,8 @@ function initMap(centerLat, centerLng, zoom) {
                 document.getElementById('counter').innerHTML = '❌ Errore caricamento dati';
                 document.getElementById('legend').innerHTML = 'Errore JSON';
             });
-
-        // Utilità escape HTML
+        
+        // Utility escape HTML
         function escapeHtml(str) {
             if (!str) return '';
             return str.replace(/[&<>]/g, function(m) {
@@ -275,29 +289,12 @@ function initMap(centerLat, centerLng, zoom) {
             });
         }
 
-        // Seeding automatico per l'area di Rivoli (dopo 2 secondi, per non bloccare UI)
-setTimeout(() => {
-    const southWest = L.latLng(45.53, 10.78);
-    const northEast = L.latLng(45.61, 10.85);
-    const bounds = L.latLngBounds(southWest, northEast);
-    const minZoom = 13;
-    const maxZoom = 16;
-
-    tileLayer.seed(bounds, minZoom, maxZoom)
-        .on('seedstart', () => console.log('Download tile iniziato'))
-        .on('seedprogress', (e) => console.log(`Tile rimanenti: ${e.remainingLength}`))
-        .on('seedend', () => console.log('Mappa offline pronta per Rivoli!'))
-        .on('seederror', (e) => console.error('Errore seeding:', e));
-}, 2000);
+        // Registrazione Service Worker (solo per caching risorse statiche – niente tile)
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/mappa-bianca-webapp/sw.js')
+                .then(reg => console.log('Service Worker registrato', reg))
+                .catch(err => console.error('Errore SW:', err));
+        }
     </script>
-
-<script>
-  if ('serviceWorker' in navigator) {
-    // Usa il percorso assoluto corretto per il project site
-    navigator.serviceWorker.register('/mappa-bianca-webapp/sw.js')
-      .then(reg => console.log('Service Worker registrato con successo', reg))
-      .catch(err => console.error('Errore nella registrazione del Service Worker:', err));
-  }
-</script>
 </body>
 </html>
