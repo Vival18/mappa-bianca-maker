@@ -1,0 +1,50 @@
+[
+    {
+        "title": "Opera d'arte esempio 1",
+        "content": "",
+        "excerpt": "",
+        "lat": "45.62150092623591",
+        "lng": "10.82912463815871",
+        "thumbnail": false
+    },
+    {
+        "title": "Fontana di Pazzon",
+        "content": "",
+        "excerpt": "",
+        "lat": "45.61867687782041",
+        "lng": "10.8250107031088",
+        "thumbnail": false
+    },
+    {
+        "title": "Lavatoio di Porcino",
+        "content": "",
+        "excerpt": "",
+        "lat": "45.61706003089321",
+        "lng": "10.828864576103808",
+        "thumbnail": false
+    },
+    {
+        "title": "Lavatoio di Pazzon",
+        "content": "",
+        "excerpt": "",
+        "lat": "45.619656137107775",
+        "lng": "10.82704951674641",
+        "thumbnail": false
+    },
+    {
+        "title": "Parcheggio",
+        "content": "",
+        "excerpt": "",
+        "lat": "45.61924045194073",
+        "lng": "10.824523648758404",
+        "thumbnail": false
+    },
+    {
+        "title": "Chiesa di Pazzon",
+        "content": "",
+        "excerpt": "",
+        "lat": "45.61882476058205",
+        "lng": "10.823873625861562",
+        "thumbnail": false
+    }
+]

@@ -287,8 +287,6 @@
 
                     map.fitBounds(sentieroLayer.getBounds());
 
-                    L.marker([45.618771, 10.824897]).addTo(map)
-                        .bindPopup("<b>Chiesa di Pazzon</b><br>Partenza del sentiero");
                 })
                 .catch(error => {
                     console.error('Errore nel caricamento del GeoJSON:', error);
@@ -457,7 +455,6 @@
                         <em>Tipologia:</em> ${tipologia}<br>
                         ${m.thumbnail ? `<img src="${escapeHtml(m.thumbnail)}" style="width:100px; max-width:100%; margin-top:5px; border-radius:4px;"><br>` : ''}
                         <p>${escapeHtml(m.excerpt || (m.content ? m.content.substring(0,150) : ''))}...</p>
-                        <a href="${escapeHtml(m.permalink)}" target="_blank">📖 Leggi di più</a>
                     `;
                     const marker = L.marker([lat, lng], { icon }).bindPopup(popupContent);
                     allMarkers.push({ marker, tipologia });
