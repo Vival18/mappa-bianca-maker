@@ -115,73 +115,87 @@
         .locate-btn:hover { background: #388e3c; }
 
         .workinprogress {
-        position: absolute;
-        bottom: 70px;
-        left: 10px;
-        right: 10px;
-        background: rgba(0,0,0,0.75);
-        color: #ffcc00;
-        padding: 8px 12px;
-        border-radius: 20px;
-        font-size: 12px;
-        text-align: center;
-        z-index: 1001;
-        backdrop-filter: blur(4px);
-        font-weight: bold;
-        pointer-events: none;
-}
-@media (max-width: 600px) {
-    .workinprogress { bottom: 90px; font-size: 10px; }
-}
+            position: absolute;
+            bottom: 70px;
+            left: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.75);
+            color: #ffcc00;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            text-align: center;
+            z-index: 1001;
+            backdrop-filter: blur(4px);
+            font-weight: bold;
+            pointer-events: none;
+        }
 
-/* Crediti minimale Mappa Bianca (basso centro) */
-.mappa-bianca-credit {
-    position: absolute;
-    bottom: 10px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 1000;
-    background: rgba(0,0,0,0.55);
-    backdrop-filter: blur(4px);
-    padding: 4px 12px;
-    border-radius: 30px;
-    font-size: 11px;
-    font-family: 'Segoe UI', sans-serif;
-    white-space: nowrap;
-    pointer-events: auto;
-    color: #ddd;
-}
-.mappa-bianca-credit a {
-    color: #ffaa66;
-    text-decoration: none;
-    font-weight: bold;
-}
-.mappa-bianca-credit a:hover {
-    text-decoration: underline;
-    color: #ffcc88;
-}
-@media (max-width: 600px) {
-    .mappa-bianca-credit {
-        font-size: 9px;
-        padding: 3px 10px;
-        bottom: 60px; /* evita sovrapposizione con contatore/legenda su mobile */
-        white-space: nowrap;
-    }
-}
+        /* Crediti minimale Mappa Bianca (basso centro) */
+        .mappa-bianca-credit {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+            background: rgba(0,0,0,0.55);
+            backdrop-filter: blur(4px);
+            padding: 4px 12px;
+            border-radius: 30px;
+            font-size: 11px;
+            font-family: 'Segoe UI', sans-serif;
+            white-space: nowrap;
+            pointer-events: auto;
+            color: #ddd;
+        }
+        .mappa-bianca-credit a {
+            color: #ffaa66;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .mappa-bianca-credit a:hover {
+            text-decoration: underline;
+            color: #ffcc88;
+        }
         
+        /* ================================= */
+        /* REGOLE PER SMARTPHONE (max-width: 600px) */
+        /* ================================= */
         @media (max-width: 600px) {
             .filter-btn { padding: 4px 10px; font-size: 12px; }
-            .legend { font-size: 10px; bottom: 60px; }
-            .counter { bottom: 60px; }
+            
+            /* 1. Nascondi i pulsanti di zoom di Leaflet */
+            .leaflet-control-zoom {
+                display: none !important;
+            }
+            
+            /* 2. Nascondi il contatore (messaggio "Nessun punto d'interesse") */
+            .counter {
+                display: none;
+            }
+            
+            /* 3. Legenda più in alto (evita sovrapposizioni con banner e crediti) */
+            .legend {
+                font-size: 10px;
+                bottom: 100px;  /* prima era 60px, ora molto più in alto */
+            }
+            
             .offline-msg { top: 100px; font-size: 10px; white-space: nowrap; }
             .locate-btn { padding: 4px 8px; font-size: 12px; top: 10px; right: 10px; }
+            .workinprogress { bottom: 60px; font-size: 10px; }
+            .mappa-bianca-credit {
+                font-size: 9px;
+                padding: 3px 10px;
+                bottom: 30px;
+                white-space: nowrap;
+            }
         }
     </style>
 </head>
 <body>
     <div id="map"></div>
     <div class="workinprogress">
-    🔧 Lavori in corso – Questa è un'anteprima. Contenuti in arrivo.
+        🔧 Lavori in corso – Questa è un'anteprima. Contenuti in arrivo.
     </div>
     <div class="filter-bar" id="filterBar"></div>
     <div class="locate-container">
@@ -191,8 +205,8 @@
     <div class="counter" id="counter">Caricamento...</div>
     <div class="offline-msg" id="offlineMsg">⚠️ Modalità offline – alcune aree potrebbero non essere visibili</div>
     <div class="mappa-bianca-credit">
-    Powered by <strong>Mappa Bianca</strong> | <a href="https://vival18.github.io/mappa-bianca/" target="_blank" rel="noopener noreferrer">Scopri di più</a>
-</div>
+        Powered by <strong>Mappa Bianca</strong> | <a href="https://vival18.github.io/mappa-bianca/" target="_blank" rel="noopener noreferrer">Scopri di più</a>
+    </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
@@ -242,10 +256,9 @@
         }
 
         // ========================
-        // 3. NUOVA FUNZIONE: CARICA IL GEOJSON
+        // 3. CARICA IL SENTIERO DA GEOJSON
         // ========================
         function addSentieroFromGeoJSON() {
-            // Carica il file GeoJSON dalla stessa cartella
             fetch('./mappaturasentieroarte.geojson')
                 .then(response => {
                     if (!response.ok) {
@@ -254,7 +267,6 @@
                     return response.json();
                 })
                 .then(geojsonData => {
-                    // Aggiungi il layer del sentiero alla mappa
                     const sentieroLayer = L.geoJSON(geojsonData, {
                         style: function (feature) {
                             return {
@@ -265,7 +277,6 @@
                             };
                         },
                         onEachFeature: function (feature, layer) {
-                            // Se il GeoJSON ha un nome o una descrizione, la mostriamo nel popup
                             if (feature.properties && feature.properties.name) {
                                 layer.bindPopup(feature.properties.name);
                             } else if (feature.properties && feature.properties.description) {
@@ -274,19 +285,15 @@
                         }
                     }).addTo(map);
 
-                    // Centra la mappa sui limiti del sentiero caricato
                     map.fitBounds(sentieroLayer.getBounds());
 
-                    // Aggiungi un marker alla Chiesa di Pazzon (punto di riferimento)
                     L.marker([45.618771, 10.824897]).addTo(map)
                         .bindPopup("<b>Chiesa di Pazzon</b><br>Partenza del sentiero");
                 })
                 .catch(error => {
                     console.error('Errore nel caricamento del GeoJSON:', error);
-                    // Fallback: se il file non esiste, usa le coordinate manuali della Chiesa
                     alert('Sentiero GeoJSON non trovato. Verifica che "mappaturasentieroarte.geojson" sia nella cartella.');
                     
-                    // (Opzionale) Carica un sentiero di default
                     const defaultSentiero = L.polyline([
                         [45.618771, 10.824897],
                         [45.618800, 10.825000]
@@ -421,13 +428,9 @@
         // 6. CARICAMENTO MARKER (da markers.json) E AVVIO
         // ========================
         initMap();
-        
-        // 6a. CARICA IL SENTIERO GEOJSON E CENTRA LA MAPPA
         addSentieroFromGeoJSON();
-        
         checkOffline();
 
-        // 6b. CARICA I MARKER (se presenti)
         fetch('markers.json')
             .then(response => response.json())
             .then(data => {
