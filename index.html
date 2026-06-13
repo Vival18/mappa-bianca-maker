@@ -2,7 +2,7 @@
 <html lang="it">
 <head>
     <meta charset="UTF-8">
-    <title>Mappa Bianca – WebApp</title>
+    <title>Sentieri nell’Arte – Baldo Festival</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
@@ -13,10 +13,9 @@
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         #map { height: 100vh; width: 100%; }
         
-        /* Pannello filtri - spostato più in basso per non coprire lo zoom */
         .filter-bar {
             position: absolute;
-            top: 70px;             /* <--- chiave: abbassato da 20px a 70px */
+            top: 70px;
             left: 10px;
             right: 10px;
             z-index: 1000;
@@ -43,7 +42,6 @@
         .filter-btn:hover { transform: scale(1.02); opacity: 0.9; }
         .filter-btn.active { background-color: #3388ff; color: white; box-shadow: 0 0 4px #3388ff; }
         
-        /* Legenda (in basso a destra) */
         .legend {
             position: absolute;
             bottom: 20px;
@@ -66,7 +64,6 @@
             vertical-align: middle;
         }
         
-        /* Contatore in basso a sinistra */
         .counter {
             position: absolute;
             bottom: 20px;
@@ -81,10 +78,9 @@
             backdrop-filter: blur(4px);
         }
 
-        /* Messaggio offline - spostato per non sovrapporsi ai filtri */
         .offline-msg {
             position: absolute;
-            top: 120px;            /* <--- abbassato per non sovrapporsi a filtri */
+            top: 120px;
             left: 50%;
             transform: translateX(-50%);
             z-index: 1001;
@@ -100,73 +96,51 @@
         }
 
         .locate-container {
-    position: absolute;
-    top: 20px;
-    right: 10px;
-    z-index: 1000;
-}
-.locate-btn {
-    background: #4caf50;
-    color: white;
-    border: none;
-    border-radius: 30px;
-    padding: 8px 12px;
-    font-weight: bold;
-    cursor: pointer;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-    font-size: 14px;
-}
-.locate-btn:hover {
-    background: #388e3c;
-}
-@media (max-width: 600px) {
-    .locate-btn { padding: 4px 8px; font-size: 12px; top: 10px; right: 10px; }
-}
+            position: absolute;
+            top: 20px;
+            right: 10px;
+            z-index: 1000;
+        }
+        .locate-btn {
+            background: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 30px;
+            padding: 8px 12px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            font-size: 14px;
+        }
+        .locate-btn:hover { background: #388e3c; }
         
         @media (max-width: 600px) {
             .filter-btn { padding: 4px 10px; font-size: 12px; }
             .legend { font-size: 10px; bottom: 60px; }
             .counter { bottom: 60px; }
             .offline-msg { top: 100px; font-size: 10px; white-space: nowrap; }
+            .locate-btn { padding: 4px 8px; font-size: 12px; top: 10px; right: 10px; }
         }
     </style>
 </head>
 <body>
     <div id="map"></div>
     <div class="filter-bar" id="filterBar"></div>
-<div class="locate-container">
-    <button id="locateBtn" class="locate-btn">📍 La mia posizione</button>
-</div>
+    <div class="locate-container">
+        <button id="locateBtn" class="locate-btn">📍 La mia posizione</button>
+    </div>
     <div class="legend" id="legend"></div>
     <div class="counter" id="counter">Caricamento...</div>
     <div class="offline-msg" id="offlineMsg">⚠️ Modalità offline – alcune aree potrebbero non essere visibili</div>
-
     <button id="installBtn" style="display: none;">Installa App</button>
-<script>
-  let deferredPrompt;
-  window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    const installBtn = document.getElementById('installBtn');
-    installBtn.style.display = 'block';
-    installBtn.addEventListener('click', () => {
-      installBtn.style.display = 'none';
-      deferredPrompt.prompt();
-      deferredPrompt.userChoice.then((choiceResult) => {
-        if (choiceResult.outcome === 'accepted') {
-          console.log('Utente ha accettato');
-        }
-        deferredPrompt = null;
-      });
-    });
-  });
-</script>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-    
+
     <script>
-        // Mappa Bianca WebApp – versione stabile
+        // ========================
+        // 1. VARIABILI GLOBALI
+        // ========================
         let map;
         let markerClusterGroup;
         let allMarkers = [];
@@ -180,7 +154,10 @@
             'Naturalistico': '#388e3c',
             'Enogastronomico': '#f57c00'
         };
-        
+
+        // ========================
+        // 2. FUNZIONI DI MAPPA E MARKER
+        // ========================
         function getColoredIcon(color) {
             return L.divIcon({
                 html: `<div style="background-color: ${color}; width: 28px; height: 28px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 4px rgba(0,0,0,0.5);"></div>`,
@@ -190,8 +167,8 @@
             });
         }
 
-        function initMap(centerLat = 45.57249, centerLng = 10.81178, zoom = 14) {
-            map = L.map('map').setView([centerLat, centerLng], zoom);
+        function initMap() {
+            map = L.map('map');
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             }).addTo(map);
@@ -202,6 +179,60 @@
                 disableClusteringAtZoom: 18
             });
             map.addLayer(markerClusterGroup);
+        }
+
+        // ========================
+        // 3. NUOVA FUNZIONE: CARICA IL GEOJSON
+        // ========================
+        function addSentieroFromGeoJSON() {
+            // Carica il file GeoJSON dalla stessa cartella
+            fetch('./mappaturasentieroarte.geojson')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('File GeoJSON non trovato o errore HTTP ' + response.status);
+                    }
+                    return response.json();
+                })
+                .then(geojsonData => {
+                    // Aggiungi il layer del sentiero alla mappa
+                    const sentieroLayer = L.geoJSON(geojsonData, {
+                        style: function (feature) {
+                            return {
+                                color: 'red',
+                                weight: 4,
+                                dashArray: '8, 8',
+                                fill: false
+                            };
+                        },
+                        onEachFeature: function (feature, layer) {
+                            // Se il GeoJSON ha un nome o una descrizione, la mostriamo nel popup
+                            if (feature.properties && feature.properties.name) {
+                                layer.bindPopup(feature.properties.name);
+                            } else if (feature.properties && feature.properties.description) {
+                                layer.bindPopup(feature.properties.description);
+                            }
+                        }
+                    }).addTo(map);
+
+                    // Centra la mappa sui limiti del sentiero caricato
+                    map.fitBounds(sentieroLayer.getBounds());
+
+                    // Aggiungi un marker alla Chiesa di Pazzon (punto di riferimento)
+                    L.marker([45.618771, 10.824897]).addTo(map)
+                        .bindPopup("<b>Chiesa di Pazzon</b><br>Partenza del sentiero");
+                })
+                .catch(error => {
+                    console.error('Errore nel caricamento del GeoJSON:', error);
+                    // Fallback: se il file non esiste, usa le coordinate manuali della Chiesa
+                    alert('Sentiero GeoJSON non trovato. Verifica che "mappaturasentieroarte.geojson" sia nella cartella.');
+                    
+                    // (Opzionale) Carica un sentiero di default
+                    const defaultSentiero = L.polyline([
+                        [45.618771, 10.824897],
+                        [45.618800, 10.825000]
+                    ], { color: 'red', weight: 4 }).addTo(map);
+                    map.fitBounds(defaultSentiero.getBounds());
+                });
         }
 
         function updateCounter() {
@@ -250,70 +281,71 @@
             });
         }
 
-        // ----- Geolocalizzazione -----
-const locateBtn = document.getElementById('locateBtn');
-let userMarker = null;
-let userCircle = null;
+        // ========================
+        // 4. GEOLOCALIZZAZIONE
+        // ========================
+        const locateBtn = document.getElementById('locateBtn');
+        let userMarker = null;
+        let userCircle = null;
 
-function onLocationFound(e) {
-    const lat = e.latitude;
-    const lng = e.longitude;
-    const radius = e.accuracy;
-
-    map.setView([lat, lng], 16);
-
-    if (userMarker) map.removeLayer(userMarker);
-    if (userCircle) map.removeLayer(userCircle);
-
-    const userIcon = L.divIcon({
-        html: `<div style="background-color: #2196f3; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 4px black;"></div>`,
-        iconSize: [20, 20],
-        className: 'user-marker'
-    });
-    userMarker = L.marker([lat, lng], { icon: userIcon }).addTo(map);
-    userMarker.bindPopup('Sei qui').openPopup();
-
-    userCircle = L.circle([lat, lng], { radius: radius, color: '#2196f3', weight: 1, fillOpacity: 0.1 }).addTo(map);
-}
-
-function onLocationError(e) {
-    let message = '';
-    switch (e.code) {
-        case 1: message = 'Permesso negato. Attiva la geolocalizzazione.'; break;
-        case 2: message = 'Posizione non disponibile.'; break;
-        case 3: message = 'Timeout della richiesta.'; break;
-        default: message = 'Errore sconosciuto.';
-    }
-    alert('⚠️ ' + message);
-    console.error(e);
-}
-
-locateBtn.addEventListener('click', () => {
-    if (!navigator.geolocation) {
-        alert('Il tuo browser non supporta la geolocalizzazione.');
-        return;
-    }
-    locateBtn.textContent = '📍 Ricerca...';
-    locateBtn.disabled = true;
-    navigator.geolocation.getCurrentPosition(
-        (position) => {
-            locateBtn.textContent = '📍 La mia posizione';
-            locateBtn.disabled = false;
-            onLocationFound({
-                latitude: position.coords.latitude,
-                longitude: position.coords.longitude,
-                accuracy: position.coords.accuracy
+        function onLocationFound(e) {
+            const lat = e.latitude;
+            const lng = e.longitude;
+            const radius = e.accuracy;
+            map.setView([lat, lng], 16);
+            if (userMarker) map.removeLayer(userMarker);
+            if (userCircle) map.removeLayer(userCircle);
+            const userIcon = L.divIcon({
+                html: `<div style="background-color: #2196f3; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 4px black;"></div>`,
+                iconSize: [20, 20],
+                className: 'user-marker'
             });
-        },
-        (error) => {
-            locateBtn.textContent = '📍 La mia posizione';
-            locateBtn.disabled = false;
-            onLocationError(error);
-        },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-    );
-});
+            userMarker = L.marker([lat, lng], { icon: userIcon }).addTo(map);
+            userMarker.bindPopup('Sei qui').openPopup();
+            userCircle = L.circle([lat, lng], { radius: radius, color: '#2196f3', weight: 1, fillOpacity: 0.1 }).addTo(map);
+        }
 
+        function onLocationError(e) {
+            let message = '';
+            switch (e.code) {
+                case 1: message = 'Permesso negato. Attiva la geolocalizzazione.'; break;
+                case 2: message = 'Posizione non disponibile.'; break;
+                case 3: message = 'Timeout della richiesta.'; break;
+                default: message = 'Errore sconosciuto.';
+            }
+            alert('⚠️ ' + message);
+            console.error(e);
+        }
+
+        locateBtn.addEventListener('click', () => {
+            if (!navigator.geolocation) {
+                alert('Il tuo browser non supporta la geolocalizzazione.');
+                return;
+            }
+            locateBtn.textContent = '📍 Ricerca...';
+            locateBtn.disabled = true;
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    locateBtn.textContent = '📍 La mia posizione';
+                    locateBtn.disabled = false;
+                    onLocationFound({
+                        latitude: position.coords.latitude,
+                        longitude: position.coords.longitude,
+                        accuracy: position.coords.accuracy
+                    });
+                },
+                (error) => {
+                    locateBtn.textContent = '📍 La mia posizione';
+                    locateBtn.disabled = false;
+                    onLocationError(error);
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+            );
+        });
+
+        // ========================
+        // 5. OFFLINE DETECTION
+        // ========================
         function checkOffline() {
             const offlineMsg = document.getElementById('offlineMsg');
             if (!navigator.onLine) {
@@ -324,12 +356,22 @@ locateBtn.addEventListener('click', () => {
         }
         window.addEventListener('online', checkOffline);
         window.addEventListener('offline', checkOffline);
+
+        // ========================
+        // 6. CARICAMENTO MARKER (da markers.json) E AVVIO
+        // ========================
+        initMap();
         
+        // 6a. CARICA IL SENTIERO GEOJSON E CENTRA LA MAPPA
+        addSentieroFromGeoJSON();
+        
+        checkOffline();
+
+        // 6b. CARICA I MARKER (se presenti)
         fetch('markers.json')
             .then(response => response.json())
             .then(data => {
                 if (!data.length) throw new Error('Nessun marker');
-                
                 const typesSet = new Set();
                 data.forEach(m => {
                     let t = m.tipologia;
@@ -339,15 +381,7 @@ locateBtn.addEventListener('click', () => {
                     typesSet.add(t);
                 });
                 const uniqueTypes = Array.from(typesSet);
-                
-                let centerLat = 45.57249, centerLng = 10.81178;
-                if (data.length && data[0].lat && data[0].lng) {
-                    centerLat = parseFloat(data[0].lat);
-                    centerLng = parseFloat(data[0].lng);
-                }
-                initMap(centerLat, centerLng, 14);
-                checkOffline();
-                
+
                 data.forEach(m => {
                     const lat = parseFloat(m.lat);
                     const lng = parseFloat(m.lng);
@@ -355,7 +389,6 @@ locateBtn.addEventListener('click', () => {
                     const tipologia = m.tipologiaNorm;
                     const color = colorMap[tipologia] || '#3388ff';
                     const icon = getColoredIcon(color);
-                    
                     const popupContent = `
                         <strong>${escapeHtml(m.title)}</strong><br>
                         <em>Tipologia:</em> ${tipologia}<br>
@@ -366,17 +399,19 @@ locateBtn.addEventListener('click', () => {
                     const marker = L.marker([lat, lng], { icon }).bindPopup(popupContent);
                     allMarkers.push({ marker, tipologia });
                 });
-                
+
                 filterMarkers('Tutti');
                 buildFilters(uniqueTypes);
                 buildLegend(uniqueTypes);
             })
             .catch(err => {
-                console.error(err);
-                document.getElementById('counter').innerHTML = '❌ Errore caricamento dati';
-                document.getElementById('legend').innerHTML = 'Errore JSON';
+                console.warn('Nessun file markers.json o errore nel caricamento:', err);
+                document.getElementById('counter').innerHTML = 'ℹ️ Nessun punto d’interesse (solo sentiero)';
+                document.getElementById('legend').innerHTML = '<strong>Legenda</strong><br><span style="background-color:red;"></span> Sentiero';
+                const legendDiv = document.getElementById('legend');
+                legendDiv.innerHTML = '<strong>Legenda</strong><br><span style="background-color:red;"></span> Sentiero dell’arte';
             });
-        
+
         function escapeHtml(str) {
             if (!str) return '';
             return str.replace(/[&<>]/g, function(m) {
@@ -387,11 +422,31 @@ locateBtn.addEventListener('click', () => {
             });
         }
 
+        // Service Worker (opzionale)
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/mappa-bianca-webapp/sw.js')
                 .then(reg => console.log('Service Worker registrato', reg))
                 .catch(err => console.error('Errore SW:', err));
         }
+
+        // Installazione App (opzionale)
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            const installBtn = document.getElementById('installBtn');
+            installBtn.style.display = 'block';
+            installBtn.addEventListener('click', () => {
+                installBtn.style.display = 'none';
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('Utente ha accettato');
+                    }
+                    deferredPrompt = null;
+                });
+            });
+        });
     </script>
 </body>
 </html>

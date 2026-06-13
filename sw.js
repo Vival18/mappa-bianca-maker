@@ -1,9 +1,9 @@
-const CACHE_NAME = 'mappa-bianca-v2';
+const CACHE_NAME = 'mappa-v2';
 const urlsToCache = [
   '/mappa-bianca-webapp/',
   '/mappa-bianca-webapp/index.html',
   '/mappa-bianca-webapp/markers.json',
-  '/mappa-bianca-webapp/manifest.json',
+  '/mappa-bianca -webapp/manifest.json',
   '/mappa-bianca-webapp/icon-192.png',
   '/mappa-bianca-webapp/icon-512.png',
   '/mappa-bianca-webapp/libs/leaflet.css',

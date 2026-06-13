@@ -1,8 +1,8 @@
 {
-  "name": "Mappa Bianca",
-  "short_name": "Mappa Bianca",
-  "description": "Mappa interattiva del territorio con punti di interesse e itinerari.",
-  "start_url": "/mappa-bianca-webapp/",
+  "name": "Sentieri nell'arte",
+  "short_name": "Sentieri nell'arte",
+  "description": "Sentieri nell'arte con opere.",
+  "start_url": "/sentieri-nell-arte-webapp/",
   "display": "standalone",
   "theme_color": "#3388ff",
   "background_color": "#ffffff",
