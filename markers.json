@@ -5,7 +5,26 @@
         "excerpt": "",
         "lat": "45.62150092623591",
         "lng": "10.82912463815871",
-        "thumbnail": false
+        "thumbnail": false,
+        "tipologia": "opera"
+    },
+    {
+        "title": "Opera d'arte esempio 2",
+        "content": "",
+        "excerpt": "",
+        "lat": "45.624300",
+        "lng": "10.834537",
+        "thumbnail": false,
+        "tipologia": "opera"
+    },
+    {
+        "title": "Opera d'arte esempio 3",
+        "content": "",
+        "excerpt": "",
+        "lat": "45.620730",
+        "lng": "10.832053",
+        "thumbnail": false,
+        "tipologia": "opera"
     },
     {
         "title": "Fontana di Pazzon",
@@ -13,7 +32,8 @@
         "excerpt": "",
         "lat": "45.61867687782041",
         "lng": "10.8250107031088",
-        "thumbnail": false
+        "thumbnail": false,
+        "tipologia": "storico"
     },
     {
         "title": "Lavatoio di Porcino",
@@ -21,7 +41,8 @@
         "excerpt": "",
         "lat": "45.61706003089321",
         "lng": "10.828864576103808",
-        "thumbnail": false
+        "thumbnail": false,    
+        "tipologia": "storico"
     },
     {
         "title": "Lavatoio di Pazzon",
@@ -29,7 +50,8 @@
         "excerpt": "",
         "lat": "45.619656137107775",
         "lng": "10.82704951674641",
-        "thumbnail": false
+        "thumbnail": false,
+        "tipologia": "storico"
     },
     {
         "title": "Parcheggio",
@@ -37,7 +59,8 @@
         "excerpt": "",
         "lat": "45.61924045194073",
         "lng": "10.824523648758404",
-        "thumbnail": false
+        "thumbnail": false,
+        "tipologia": "servizio"
     },
     {
         "title": "Chiesa di Pazzon",
@@ -45,6 +68,7 @@
         "excerpt": "",
         "lat": "45.61882476058205",
         "lng": "10.823873625861562",
-        "thumbnail": false
+        "thumbnail": false,
+        "tipologia": "storico"
     }
 ]

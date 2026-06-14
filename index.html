@@ -13,21 +13,42 @@
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         #map { height: 100vh; width: 100%; }
         
+        /* Pulsante geolocalizzazione (alto sinistra) */
+        .locate-container {
+            position: absolute;
+            top: 20px;
+            left: 10px;
+            z-index: 1000;
+        }
+        .locate-btn {
+            background: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 30px;
+            padding: 8px 12px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            font-size: 14px;
+        }
+        .locate-btn:hover { background: #388e3c; }
+
+        /* Barra dei filtri (alto destra) */
         .filter-bar {
             position: absolute;
-            top: 70px;
-            left: 10px;
+            top: 20px;
             right: 10px;
             z-index: 1000;
             background: rgba(255,255,255,0.95);
-            padding: 8px 12px;
+            padding: 6px 12px;
             border-radius: 40px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.2);
             display: flex;
-            flex-wrap: wrap;      
-            gap: 8px;
-            justify-content: center;
+            flex-wrap: wrap;
+            gap: 6px;
+            justify-content: flex-end;
             backdrop-filter: blur(4px);
+            max-width: calc(100% - 140px);
         }
         .filter-btn {
             padding: 6px 14px;
@@ -38,9 +59,19 @@
             transition: 0.2s;
             background-color: #eee;
             color: #333;
+            font-size: 13px;
         }
         .filter-btn:hover { transform: scale(1.02); opacity: 0.9; }
         .filter-btn.active { background-color: #3388ff; color: white; box-shadow: 0 0 4px #3388ff; }
+        
+        /* Sposta i controlli zoom di Leaflet in basso a sinistra */
+        .leaflet-control-zoom {
+            position: absolute;
+            bottom: 20px;
+            left: 10px;
+            top: auto;
+            z-index: 1000;
+        }
         
         .legend {
             position: absolute;
@@ -80,7 +111,7 @@
 
         .offline-msg {
             position: absolute;
-            top: 120px;
+            top: 80px;
             left: 50%;
             transform: translateX(-50%);
             z-index: 1001;
@@ -95,43 +126,27 @@
             white-space: nowrap;
         }
 
-        .locate-container {
-            position: absolute;
-            top: 20px;
-            right: 10px;
-            z-index: 1000;
-        }
-        .locate-btn {
-            background: #4caf50;
-            color: white;
-            border: none;
-            border-radius: 30px;
-            padding: 8px 12px;
-            font-weight: bold;
-            cursor: pointer;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            font-size: 14px;
-        }
-        .locate-btn:hover { background: #388e3c; }
-
+        /* Banner lavori in corso: larghezza automatica, centrato */
         .workinprogress {
             position: absolute;
             bottom: 70px;
-            left: 10px;
-            right: 10px;
+            left: 50%;
+            transform: translateX(-50%);
             background: rgba(0,0,0,0.75);
             color: #ffcc00;
-            padding: 8px 12px;
-            border-radius: 20px;
+            padding: 8px 16px;
+            border-radius: 30px;
             font-size: 12px;
             text-align: center;
             z-index: 1001;
             backdrop-filter: blur(4px);
             font-weight: bold;
             pointer-events: none;
+            white-space: nowrap;
+            width: auto;
         }
 
-        /* Crediti minimale Mappa Bianca (basso centro) */
+        /* Crediti Mappa Bianca (basso centro) */
         .mappa-bianca-credit {
             position: absolute;
             bottom: 10px;
@@ -162,27 +177,44 @@
         /* REGOLE PER SMARTPHONE (max-width: 600px) */
         /* ================================= */
         @media (max-width: 600px) {
-            .filter-btn { padding: 4px 10px; font-size: 12px; }
+            .filter-bar {
+                top: 10px;
+                right: 10px;
+                padding: 4px 8px;
+                gap: 4px;
+                max-width: calc(100% - 130px);
+            }
+            .filter-btn { padding: 4px 10px; font-size: 11px; }
             
-            /* 1. Nascondi i pulsanti di zoom di Leaflet */
+            .locate-container {
+                top: 10px;
+                left: 10px;
+            }
+            .locate-btn { padding: 4px 8px; font-size: 12px; }
+            
+            /* I controlli zoom di Leaflet li nascondiamo su mobile (opzionale) */
             .leaflet-control-zoom {
                 display: none !important;
             }
             
-            /* 2. Nascondi il contatore (messaggio "Nessun punto d'interesse") */
+            /* Nascondi il contatore */
             .counter {
                 display: none;
             }
             
-            /* 3. Legenda più in alto (evita sovrapposizioni con banner e crediti) */
+            /* Legenda più in alto per evitare sovrapposizioni */
             .legend {
                 font-size: 10px;
-                bottom: 100px;  /* prima era 60px, ora molto più in alto */
+                bottom: 100px;
             }
             
-            .offline-msg { top: 100px; font-size: 10px; white-space: nowrap; }
-            .locate-btn { padding: 4px 8px; font-size: 12px; top: 10px; right: 10px; }
-            .workinprogress { bottom: 60px; font-size: 10px; }
+            .offline-msg { top: 80px; font-size: 10px; white-space: nowrap; }
+            .workinprogress {
+                bottom: 60px;
+                font-size: 10px;
+                padding: 5px 12px;
+                white-space: nowrap;
+            }
             .mappa-bianca-credit {
                 font-size: 9px;
                 padding: 3px 10px;
@@ -190,6 +222,32 @@
                 white-space: nowrap;
             }
         }
+
+        @media (max-width: 370px) {
+    .filter-bar {
+        max-width: calc(100% - 80px);  /* riduci la larghezza massima */
+        padding: 4px 6px;
+        gap: 3px;
+    }
+    .filter-btn {
+        padding: 3px 8px;
+        font-size: 10px;
+    }
+    .locate-container {
+        left: 5px;
+        top: 8px;
+    }
+    .locate-btn {
+        padding: 3px 6px;
+        font-size: 11px;
+    }
+    .workinprogress {
+        font-size: 9px;
+        padding: 4px 10px;
+        bottom: 55px;
+        white-space: nowrap;
+    }
+}
     </style>
 </head>
 <body>
@@ -221,12 +279,15 @@
         let currentFilter = 'Tutti';
 
         const colorMap = {
-            'Storico': '#d32f2f',
-            'Archeologico': '#d32f2f',
-            'Religioso': '#9c27b0',
-            'Paesaggistico': '#388e3c',
-            'Naturalistico': '#388e3c',
-            'Enogastronomico': '#f57c00'
+            'opera': '#e31a23',
+            'servizio': '#1e90ff',
+            'storico': '#ff8c00'
+        };
+
+        const categoryNames = {
+            'opera': 'Opere',
+            'servizio': 'Servizi',
+            'storico': 'Storici'
         };
 
         // ========================
@@ -246,6 +307,10 @@
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
             }).addTo(map);
+
+                map.on('click', function(e) {
+        console.log(`📍 [${e.latlng.lat.toFixed(6)}, ${e.latlng.lng.toFixed(6)}]`);
+            });
             
             markerClusterGroup = L.markerClusterGroup({
                 showCoverageOnHover: false,
@@ -255,43 +320,25 @@
             map.addLayer(markerClusterGroup);
         }
 
-        // ========================
-        // 3. CARICA IL SENTIERO DA GEOJSON
-        // ========================
         function addSentieroFromGeoJSON() {
             fetch('./mappaturasentieroarte.geojson')
                 .then(response => {
-                    if (!response.ok) {
-                        throw new Error('File GeoJSON non trovato o errore HTTP ' + response.status);
-                    }
+                    if (!response.ok) throw new Error('GeoJSON non trovato');
                     return response.json();
                 })
                 .then(geojsonData => {
                     const sentieroLayer = L.geoJSON(geojsonData, {
-                        style: function (feature) {
-                            return {
-                                color: 'red',
-                                weight: 4,
-                                dashArray: '8, 8',
-                                fill: false
-                            };
-                        },
-                        onEachFeature: function (feature, layer) {
-                            if (feature.properties && feature.properties.name) {
-                                layer.bindPopup(feature.properties.name);
-                            } else if (feature.properties && feature.properties.description) {
-                                layer.bindPopup(feature.properties.description);
-                            }
+                        style: { color: 'red', weight: 4, dashArray: '8, 8', fill: false },
+                        onEachFeature: (feature, layer) => {
+                            if (feature.properties?.name) layer.bindPopup(feature.properties.name);
+                            else if (feature.properties?.description) layer.bindPopup(feature.properties.description);
                         }
                     }).addTo(map);
-
                     map.fitBounds(sentieroLayer.getBounds());
-
                 })
                 .catch(error => {
-                    console.error('Errore nel caricamento del GeoJSON:', error);
+                    console.error(error);
                     alert('Sentiero GeoJSON non trovato. Verifica che "mappaturasentieroarte.geojson" sia nella cartella.');
-                    
                     const defaultSentiero = L.polyline([
                         [45.618771, 10.824897],
                         [45.618800, 10.825000]
@@ -311,18 +358,18 @@
             allMarkers.forEach(item => {
                 let match = false;
                 if (category === 'Tutti') match = true;
-                else if (category === 'Storico' && (item.tipologia === 'Storico' || item.tipologia === 'Archeologico')) match = true;
-                else if (category === 'Paesaggistico' && (item.tipologia === 'Paesaggistico' || item.tipologia === 'Naturalistico')) match = true;
-                else if (item.tipologia === category) match = true;
+                else if (category === 'Opere' && item.tipologia === 'opera') match = true;
+                else if (category === 'Servizi' && item.tipologia === 'servizio') match = true;
+                else if (category === 'Storici' && item.tipologia === 'storico') match = true;
                 if (match) markerClusterGroup.addLayer(item.marker);
             });
             updateCounter();
         }
 
-        function buildFilters(uniqueTypes) {
+        function buildFilters() {
             const filterDiv = document.getElementById('filterBar');
             filterDiv.innerHTML = '';
-            const buttons = ['Tutti', ...uniqueTypes.sort()];
+            const buttons = ['Tutti', 'Opere', 'Servizi', 'Storici'];
             buttons.forEach(cat => {
                 const btn = document.createElement('button');
                 btn.textContent = cat;
@@ -340,23 +387,27 @@
         function buildLegend(uniqueTypes) {
             const legendDiv = document.getElementById('legend');
             legendDiv.innerHTML = '<strong>Legenda</strong><br>';
-            uniqueTypes.forEach(type => {
-                let color = colorMap[type] || '#3388ff';
-                legendDiv.innerHTML += `<span style="background-color: ${color};"></span> ${type}<br>`;
+            if (uniqueTypes.length === 0) {
+                legendDiv.innerHTML += '<span style="background-color:red;"></span> Sentiero<br>';
+                return;
+            }
+            const order = ['opera', 'servizio', 'storico'];
+            order.forEach(cat => {
+                if (uniqueTypes.includes(cat)) {
+                    legendDiv.innerHTML += `<span style="background-color: ${colorMap[cat]};"></span> ${categoryNames[cat]}<br>`;
+                }
             });
+            legendDiv.innerHTML += '<span style="background-color:red; border-radius: 4px; width:16px; height:4px;"></span> Sentiero<br>';
         }
 
         // ========================
-        // 4. GEOLOCALIZZAZIONE
+        // 3. GEOLOCALIZZAZIONE
         // ========================
         const locateBtn = document.getElementById('locateBtn');
-        let userMarker = null;
-        let userCircle = null;
+        let userMarker = null, userCircle = null;
 
         function onLocationFound(e) {
-            const lat = e.latitude;
-            const lng = e.longitude;
-            const radius = e.accuracy;
+            const { latitude: lat, longitude: lng, accuracy: radius } = e;
             map.setView([lat, lng], 16);
             if (userMarker) map.removeLayer(userMarker);
             if (userCircle) map.removeLayer(userCircle);
@@ -365,9 +416,8 @@
                 iconSize: [20, 20],
                 className: 'user-marker'
             });
-            userMarker = L.marker([lat, lng], { icon: userIcon }).addTo(map);
-            userMarker.bindPopup('Sei qui').openPopup();
-            userCircle = L.circle([lat, lng], { radius: radius, color: '#2196f3', weight: 1, fillOpacity: 0.1 }).addTo(map);
+            userMarker = L.marker([lat, lng], { icon: userIcon }).addTo(map).bindPopup('Sei qui').openPopup();
+            userCircle = L.circle([lat, lng], { radius, color: '#2196f3', weight: 1, fillOpacity: 0.1 }).addTo(map);
         }
 
         function onLocationError(e) {
@@ -379,7 +429,6 @@
                 default: message = 'Errore sconosciuto.';
             }
             alert('⚠️ ' + message);
-            console.error(e);
         }
 
         locateBtn.addEventListener('click', () => {
@@ -409,21 +458,17 @@
         });
 
         // ========================
-        // 5. OFFLINE DETECTION
+        // 4. OFFLINE DETECTION
         // ========================
         function checkOffline() {
             const offlineMsg = document.getElementById('offlineMsg');
-            if (!navigator.onLine) {
-                offlineMsg.style.display = 'block';
-            } else {
-                offlineMsg.style.display = 'none';
-            }
+            offlineMsg.style.display = navigator.onLine ? 'none' : 'block';
         }
         window.addEventListener('online', checkOffline);
         window.addEventListener('offline', checkOffline);
 
         // ========================
-        // 6. CARICAMENTO MARKER (da markers.json) E AVVIO
+        // 5. CARICAMENTO MARKER E AVVIO
         // ========================
         initMap();
         addSentieroFromGeoJSON();
@@ -435,11 +480,13 @@
                 if (!data.length) throw new Error('Nessun marker');
                 const typesSet = new Set();
                 data.forEach(m => {
-                    let t = m.tipologia;
-                    if (t === 'Archeologico') t = 'Storico';
-                    if (t === 'Naturalistico') t = 'Paesaggistico';
-                    m.tipologiaNorm = t;
-                    typesSet.add(t);
+                    let tipologia = m.tipologia;
+                    if (tipologia === 'opera' || tipologia === 'opere') tipologia = 'opera';
+                    else if (tipologia === 'servizio' || tipologia === 'servizi') tipologia = 'servizio';
+                    else if (tipologia === 'storico' || tipologia === 'storici') tipologia = 'storico';
+                    else tipologia = 'opera';
+                    m.tipologiaNorm = tipologia;
+                    typesSet.add(tipologia);
                 });
                 const uniqueTypes = Array.from(typesSet);
 
@@ -448,11 +495,11 @@
                     const lng = parseFloat(m.lng);
                     if (isNaN(lat) || isNaN(lng)) return;
                     const tipologia = m.tipologiaNorm;
-                    const color = colorMap[tipologia] || '#3388ff';
+                    const color = colorMap[tipologia] || '#cccccc';
                     const icon = getColoredIcon(color);
                     const popupContent = `
                         <strong>${escapeHtml(m.title)}</strong><br>
-                        <em>Tipologia:</em> ${tipologia}<br>
+                        <em>Tipologia:</em> ${categoryNames[tipologia] || tipologia}<br>
                         ${m.thumbnail ? `<img src="${escapeHtml(m.thumbnail)}" style="width:100px; max-width:100%; margin-top:5px; border-radius:4px;"><br>` : ''}
                         <p>${escapeHtml(m.excerpt || (m.content ? m.content.substring(0,150) : ''))}...</p>
                     `;
@@ -460,52 +507,43 @@
                     allMarkers.push({ marker, tipologia });
                 });
 
-                filterMarkers('Tutti');
-                buildFilters(uniqueTypes);
+                buildFilters();
                 buildLegend(uniqueTypes);
+                filterMarkers('Tutti');
             })
             .catch(err => {
-                console.warn('Nessun file markers.json o errore nel caricamento:', err);
+                console.warn(err);
                 document.getElementById('counter').innerHTML = 'ℹ️ Nessun punto d’interesse (solo sentiero)';
                 document.getElementById('legend').innerHTML = '<strong>Legenda</strong><br><span style="background-color:red;"></span> Sentiero';
-                const legendDiv = document.getElementById('legend');
-                legendDiv.innerHTML = '<strong>Legenda</strong><br><span style="background-color:red;"></span> Sentiero ';
+                buildFilters();
             });
 
         function escapeHtml(str) {
             if (!str) return '';
-            return str.replace(/[&<>]/g, function(m) {
-                if (m === '&') return '&amp;';
-                if (m === '<') return '&lt;';
-                if (m === '>') return '&gt;';
-                return m;
-            });
+            return str.replace(/[&<>]/g, m => m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;');
         }
 
-        // Service Worker (opzionale)
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/mappa-bianca-webapp/sw.js')
-                .then(reg => console.log('Service Worker registrato', reg))
                 .catch(err => console.error('Errore SW:', err));
         }
 
-        // Installazione App (opzionale)
         let deferredPrompt;
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
             const installBtn = document.getElementById('installBtn');
-            installBtn.style.display = 'block';
-            installBtn.addEventListener('click', () => {
-                installBtn.style.display = 'none';
-                deferredPrompt.prompt();
-                deferredPrompt.userChoice.then((choiceResult) => {
-                    if (choiceResult.outcome === 'accepted') {
-                        console.log('Utente ha accettato');
-                    }
-                    deferredPrompt = null;
+            if (installBtn) {
+                installBtn.style.display = 'block';
+                installBtn.addEventListener('click', () => {
+                    installBtn.style.display = 'none';
+                    deferredPrompt.prompt();
+                    deferredPrompt.userChoice.then((choiceResult) => {
+                        if (choiceResult.outcome === 'accepted') console.log('Utente ha accettato');
+                        deferredPrompt = null;
+                    });
                 });
-            });
+            }
         });
     </script>
 </body>
