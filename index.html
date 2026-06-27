@@ -630,7 +630,7 @@
             // Marker temporaneo per la posizione corrente
             let currentPositionMarker = null;
 
-            // Marker di partenza e arrivo
+            // Marker di partenza e arrivo durante la registrazione
             let startMarker = null;
             let endMarker = null;
 
@@ -647,6 +647,7 @@
 
             let savedTracks = [];
             const trackPolylines = {};
+            const trackMarkers = {};  // id -> { start: marker, end: marker }
 
             const STORAGE_KEY = 'mappa_bianca_tracks';
             const DRAFT_KEY = 'mappa_bianca_draft';
@@ -760,16 +761,25 @@
             }
 
             // ========================================
-            //  6. DISEGNO TRACCE E MARKER
+            //  6. DISEGNO TRACCE E MARKER (con gestione corretta)
             // ========================================
             function drawTrack(track, visible) {
                 const id = track.id;
+                // Rimuovi polyline esistente
                 if (trackPolylines[id]) {
                     map.removeLayer(trackPolylines[id]);
                     delete trackPolylines[id];
                 }
+                // Rimuovi eventuali marker esistenti per questa traccia
+                if (trackMarkers[id]) {
+                    if (trackMarkers[id].start) map.removeLayer(trackMarkers[id].start);
+                    if (trackMarkers[id].end) map.removeLayer(trackMarkers[id].end);
+                    delete trackMarkers[id];
+                }
+
                 if (!track.points || track.points.length < 2) return;
 
+                // --- Polyline ---
                 const color = track.color || generateColor(savedTracks.indexOf(track));
                 const polyline = L.polyline(track.points, {
                     color: color,
@@ -783,41 +793,66 @@
                 trackPolylines[id] = polyline;
                 track.color = color;
 
-                // Aggiungi marker di partenza e arrivo (se presenti)
+                // --- Marker di partenza e arrivo ---
+                const markers = { start: null, end: null };
                 if (track.startMarker) {
-                    L.marker(track.startMarker, {
-                        icon: L.divIcon({
-                            html: '<div style="background:#2ecc71;width:14px;height:14px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 4px rgba(0,0,0,0.5);"></div>',
-                            iconSize: [14, 14],
-                            className: 'start-marker'
-                        })
-                    }).addTo(map).bindPopup('🚀 Partenza');
+                    const iconStart = L.divIcon({
+                        html: '<div style="background:#2ecc71;width:18px;height:18px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 6px rgba(0,0,0,0.5);"></div>',
+                        iconSize: [18, 18],
+                        className: 'start-marker'
+                    });
+                    const start = L.marker(track.startMarker, { icon: iconStart })
+                        .bindPopup('🚀 Partenza');
+                    if (visible !== false) start.addTo(map);
+                    markers.start = start;
                 }
                 if (track.endMarker) {
-                    L.marker(track.endMarker, {
-                        icon: L.divIcon({
-                            html: '<div style="background:#e74c3c;width:14px;height:14px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 4px rgba(0,0,0,0.5);"></div>',
-                            iconSize: [14, 14],
-                            className: 'end-marker'
-                        })
-                    }).addTo(map).bindPopup('🏁 Arrivo');
+                    const iconEnd = L.divIcon({
+                        html: '<div style="background:#e74c3c;width:18px;height:18px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 6px rgba(0,0,0,0.5);"></div>',
+                        iconSize: [18, 18],
+                        className: 'end-marker'
+                    });
+                    const end = L.marker(track.endMarker, { icon: iconEnd })
+                        .bindPopup('🏁 Arrivo');
+                    if (visible !== false) end.addTo(map);
+                    markers.end = end;
                 }
+                trackMarkers[id] = markers;
             }
 
             function redrawAllTracks() {
+                // Rimuovi tutte le polyline
                 Object.keys(trackPolylines).forEach(id => {
                     map.removeLayer(trackPolylines[id]);
                     delete trackPolylines[id];
                 });
+                // Rimuovi tutti i marker
+                Object.keys(trackMarkers).forEach(id => {
+                    if (trackMarkers[id].start) map.removeLayer(trackMarkers[id].start);
+                    if (trackMarkers[id].end) map.removeLayer(trackMarkers[id].end);
+                    delete trackMarkers[id];
+                });
+                // Ridisegna tutte le tracce (con marker)
                 savedTracks.forEach(t => drawTrack(t, true));
             }
 
             function toggleTrackVisibility(id, visible) {
+                // Polyline
                 if (trackPolylines[id]) {
                     if (visible) {
                         map.addLayer(trackPolylines[id]);
                     } else {
                         map.removeLayer(trackPolylines[id]);
+                    }
+                }
+                // Marker
+                if (trackMarkers[id]) {
+                    if (visible) {
+                        if (trackMarkers[id].start) map.addLayer(trackMarkers[id].start);
+                        if (trackMarkers[id].end) map.addLayer(trackMarkers[id].end);
+                    } else {
+                        if (trackMarkers[id].start) map.removeLayer(trackMarkers[id].start);
+                        if (trackMarkers[id].end) map.removeLayer(trackMarkers[id].end);
                     }
                 }
             }
@@ -885,10 +920,19 @@
                 if (!confirm('Eliminare questo percorso?')) return;
                 savedTracks = savedTracks.filter(t => t.id !== id);
                 saveTracksToStorage();
+
+                // Rimuovi polyline
                 if (trackPolylines[id]) {
                     map.removeLayer(trackPolylines[id]);
                     delete trackPolylines[id];
                 }
+                // Rimuovi marker
+                if (trackMarkers[id]) {
+                    if (trackMarkers[id].start) map.removeLayer(trackMarkers[id].start);
+                    if (trackMarkers[id].end) map.removeLayer(trackMarkers[id].end);
+                    delete trackMarkers[id];
+                }
+
                 renderTrackList();
             }
 
@@ -897,9 +941,16 @@
                 if (!confirm('Eliminare TUTTI i percorsi salvati?')) return;
                 savedTracks = [];
                 saveTracksToStorage();
+                // Rimuovi polyline
                 Object.keys(trackPolylines).forEach(id => {
                     map.removeLayer(trackPolylines[id]);
                     delete trackPolylines[id];
+                });
+                // Rimuovi marker
+                Object.keys(trackMarkers).forEach(id => {
+                    if (trackMarkers[id].start) map.removeLayer(trackMarkers[id].start);
+                    if (trackMarkers[id].end) map.removeLayer(trackMarkers[id].end);
+                    delete trackMarkers[id];
                 });
                 renderTrackList();
             }
