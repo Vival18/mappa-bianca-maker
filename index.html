@@ -1,29 +1,99 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-    <meta charset="UTF-8">
-    <title>Sentieri nell’Arte – Baldo Festival</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <meta charset="UTF-8" />
+    <title>Mappa Bianca Maker – Traccia i tuoi percorsi</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
-    <link rel="manifest" href="/sentieri-nellarte-map/manifest.json?v=2">
-    <meta name="theme-color" content="#2d5a27">
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-6L90M4TJHC"></script>
-    <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    gtag('js', new Date());
-    gtag('config', 'G-6L90M4TJHC');
-    </script>
+    <link rel="manifest" href="./manifest.json" />
+    <meta name="theme-color" content="#2d5a27" />
 
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        #map { height: 100vh; width: 100%; }
-        
-        /* Pulsante geolocalizzazione (alto sinistra) */
+        /* RESET */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a2e;
+            overflow: hidden;
+            height: 100vh;
+        }
+        #map {
+            height: 100vh;
+            width: 100%;
+        }
+
+        /* OVERLAY DI CARICAMENTO */
+        #loadingOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(6px);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            color: #fff;
+            font-size: 18px;
+            transition: opacity 0.6s ease;
+            pointer-events: none;
+        }
+        #loadingOverlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 5px solid rgba(255, 255, 255, 0.2);
+            border-top-color: #4caf50;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 20px;
+        }
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+        #loadingOverlay .sub {
+            font-size: 14px;
+            opacity: 0.7;
+            margin-top: 8px;
+        }
+        #loadingOverlay .error-msg {
+            color: #ff6b6b;
+            font-weight: 600;
+            margin-top: 12px;
+            display: none;
+        }
+        #loadingOverlay .retry-btn {
+            margin-top: 16px;
+            background: #4caf50;
+            border: none;
+            color: #fff;
+            padding: 8px 24px;
+            border-radius: 30px;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            pointer-events: auto;
+            display: none;
+        }
+        #loadingOverlay .retry-btn:hover {
+            background: #388e3c;
+        }
+
+        /* PULSANTE GEOLOCALIZZAZIONE */
         .locate-container {
             position: absolute;
             top: 20px;
@@ -32,718 +102,1533 @@
         }
         .locate-btn {
             background: #4caf50;
-            color: white;
+            color: #fff;
             border: none;
             border-radius: 30px;
-            padding: 8px 12px;
-            font-weight: bold;
-            cursor: pointer;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            padding: 8px 14px;
+            font-weight: 700;
             font-size: 14px;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+            transition: background 0.2s;
         }
-        .locate-btn:hover { background: #388e3c; }
+        .locate-btn:hover {
+            background: #388e3c;
+        }
+        .locate-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
 
-        /* Barra dei filtri (alto destra) */
-        .filter-bar {
+        /* STATUS POSIZIONE (alto centro) */
+        #locationStatus {
             position: absolute;
             top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1001;
+            background: rgba(0, 0, 0, 0.75);
+            color: #fff;
+            padding: 6px 20px;
+            border-radius: 30px;
+            font-size: 13px;
+            font-weight: 500;
+            backdrop-filter: blur(4px);
+            white-space: nowrap;
+            display: none;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            pointer-events: none;
+        }
+
+        /* PANNELLO DI CONTROLLO */
+        #controlPanel {
+            position: absolute;
+            bottom: 20px;
+            left: 10px;
             right: 10px;
+            background: rgba(255, 255, 255, 0.96);
+            border-radius: 16px;
+            padding: 14px 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+            max-height: 50vh;
+            overflow-y: auto;
             z-index: 1000;
-            background: rgba(255,255,255,0.95);
-            padding: 6px 12px;
-            border-radius: 40px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            font-size: 0.9rem;
+            backdrop-filter: blur(6px);
+            transition: max-height 0.3s;
+        }
+        #controlPanel::-webkit-scrollbar {
+            width: 4px;
+        }
+        #controlPanel::-webkit-scrollbar-thumb {
+            background: #aaa;
+            border-radius: 4px;
+        }
+
+        #recordingControls {
             display: flex;
             flex-wrap: wrap;
-            gap: 6px;
-            justify-content: flex-end;
-            backdrop-filter: blur(4px);
-            max-width: calc(100% - 140px);
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 10px;
+            border-bottom: 1px solid #e0e0e0;
+            padding-bottom: 10px;
         }
-        .filter-btn {
-            padding: 6px 14px;
+        #recordingControls input {
+            flex: 1 1 140px;
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 14px;
+            min-width: 100px;
+        }
+        #recordingControls input:disabled {
+            opacity: 0.5;
+            background: #f0f0f0;
+        }
+        .rec-btn {
+            padding: 8px 16px;
             border: none;
-            border-radius: 30px;
-            font-weight: bold;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 14px;
             cursor: pointer;
             transition: 0.2s;
-            background-color: #eee;
+            white-space: nowrap;
+        }
+        .rec-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .rec-btn-start {
+            background: #2ecc71;
+            color: #fff;
+        }
+        .rec-btn-start:hover:not(:disabled) {
+            background: #27ae60;
+        }
+        .rec-btn-start.recording {
+            background: #e74c3c;
+        }
+        .rec-btn-start.recording:hover:not(:disabled) {
+            background: #c0392b;
+        }
+        .rec-btn-save {
+            background: #3498db;
+            color: #fff;
+        }
+        .rec-btn-save:hover:not(:disabled) {
+            background: #2980b9;
+        }
+
+        /* Info registrazione */
+        #recordingInfo {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            font-size: 13px;
             color: #333;
+            margin-bottom: 8px;
+            padding: 4px 0;
+            border-bottom: 1px dashed #ddd;
+        }
+        #recordingInfo span {
+            background: #f5f5f5;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-weight: 500;
+        }
+        #recordingInfo .dist {
+            color: #2ecc71;
+        }
+        #recordingInfo .pts {
+            color: #3498db;
+        }
+
+        /* Lista percorsi salvati */
+        #tracksSection {
+            margin-top: 2px;
+        }
+        #tracksSection h4 {
+            font-size: 14px;
+            margin: 0 0 6px 0;
+            color: #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        #tracksSection h4 small {
+            font-weight: 400;
+            font-size: 12px;
+            color: #888;
+        }
+        #trackListItems {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 6px 0;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        #trackListItems li {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 5px 4px;
+            border-bottom: 1px solid #f0f0f0;
             font-size: 13px;
         }
-        .filter-btn:hover { transform: scale(1.02); opacity: 0.9; }
-        .filter-btn.active { background-color: #3388ff; color: white; box-shadow: 0 0 4px #3388ff; }
-        
-        /* Sposta i controlli zoom di Leaflet in basso a sinistra */
-        .leaflet-control-zoom {
-            position: absolute;
-            bottom: 20px;
-            left: 10px;
-            top: auto;
-            z-index: 1000;
+        #trackListItems li input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            flex-shrink: 0;
         }
-        
-        .legend {
-            position: absolute;
-            bottom: 20px;
-            right: 10px;
-            z-index: 1000;
-            background: rgba(255,255,255,0.9);
-            padding: 8px 12px;
-            border-radius: 12px;
-            font-size: 12px;
-            box-shadow: 0 1px 5px rgba(0,0,0,0.2);
-            backdrop-filter: blur(4px);
-            pointer-events: none;
-        }
-        .legend span {
-            display: inline-block;
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            margin-right: 6px;
-            vertical-align: middle;
-        }
-        
-        .counter {
-            position: absolute;
-            bottom: 20px;
-            left: 10px;
-            z-index: 1000;
-            background: rgba(0,0,0,0.6);
-            color: white;
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: bold;
-            backdrop-filter: blur(4px);
-        }
-
-        .offline-msg {
-            position: absolute;
-            top: 80px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 1001;
-            background: rgba(0,0,0,0.7);
-            color: #ffaa00;
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: bold;
-            backdrop-filter: blur(4px);
-            display: none;
+        #trackListItems li .track-name {
+            flex: 1;
+            cursor: pointer;
+            color: #1a1a2e;
+            font-weight: 500;
+            overflow: hidden;
+            text-overflow: ellipsis;
             white-space: nowrap;
         }
-
-        /* Banner lavori in corso: larghezza automatica, centrato */
-        .workinprogress {
-            position: absolute;
-            bottom: 70px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0,0,0,0.75);
-            color: #ffcc00;
-            padding: 8px 16px;
-            border-radius: 30px;
-            font-size: 12px;
-            text-align: center;
-            z-index: 1001;
-            backdrop-filter: blur(4px);
-            font-weight: bold;
-            pointer-events: none;
-            white-space: nowrap;
-            width: auto;
-        }
-
-        /* Crediti Mappa Bianca (basso centro) */
-        .mappa-bianca-credit {
-            position: absolute;
-            bottom: 10px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 1000;
-            background: rgba(0,0,0,0.55);
-            backdrop-filter: blur(4px);
-            padding: 4px 12px;
-            border-radius: 30px;
-            font-size: 11px;
-            font-family: 'Segoe UI', sans-serif;
-            white-space: nowrap;
-            pointer-events: auto;
-            color: #ddd;
-        }
-        .mappa-bianca-credit a {
-            color: #ffaa66;
-            text-decoration: none;
-            font-weight: bold;
-        }
-        .mappa-bianca-credit a:hover {
+        #trackListItems li .track-name:hover {
+            color: #2980b9;
             text-decoration: underline;
-            color: #ffcc88;
+        }
+        #trackListItems li .track-delete {
+            background: none;
+            border: none;
+            color: #e74c3c;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 0 4px;
+            line-height: 1;
+            transition: transform 0.15s;
+        }
+        #trackListItems li .track-delete:hover {
+            transform: scale(1.3);
+        }
+        #trackListItems .empty-msg {
+            color: #999;
+            font-style: italic;
+            padding: 8px 0;
+            text-align: center;
+            font-size: 13px;
         }
 
-        /* ================================= */
-/* ================================= */
-/* PULSANTE INSTALLAZIONE APP */
-/* ================================= */
-#installContainer {
-    position: absolute;
-    bottom: 1000px;
-    left: 10px;          /* ← spostato a sinistra */
-    z-index: 1000;
-    pointer-events: none;
-}
-.install-btn {
-    pointer-events: auto;
-    background: #2d5a27;
-    color: white;
-    border: none;
-    border-radius: 40px;
-    padding: 10px 16px;
-    font-size: 13px;
-    font-weight: bold;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-    cursor: pointer;
-    transition: all 0.2s;
-    white-space: nowrap;
-}
-.install-btn:hover {
-    background: #1e3f1a;
-    transform: scale(1.02);
-}
-.install-btn:active {
-    transform: scale(0.95);
-}
+        .track-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 4px;
+        }
+        .track-actions button {
+            padding: 5px 14px;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-clear-all {
+            background: #e74c3c;
+            color: #fff;
+        }
+        .btn-clear-all:hover {
+            background: #c0392b;
+        }
+        .btn-export-geojson {
+            background: #f39c12;
+            color: #fff;
+        }
+        .btn-export-geojson:hover {
+            background: #d68910;
+        }
+        .btn-export-gpx {
+            background: #27ae60;
+            color: #fff;
+        }
+        .btn-export-gpx:hover {
+            background: #1e8449;
+        }
 
-/* Nascondi su desktop (schermi larghi) */
-@media (min-width: 769px) {
-    #installContainer {
-        display: none !important;
-    }
-}
+        /* Pulsante recupero bozza */
+        #resumeDraftBtn {
+            background: #f39c12;
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            padding: 4px 12px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 8px;
+        }
+        #resumeDraftBtn:hover {
+            background: #d68910;
+        }
 
-/* Adattamento su mobile piccolo */
-@media (max-width: 600px) {
-    .install-btn {
-        padding: 8px 12px;
-        font-size: 11px;
-        border-radius: 30px;
-    }
-    #installContainer {
-        bottom: 90px;
-        left: 8px;        /* ← allineato a sinistra */
-    }
-}
+        /* PWA INSTALL */
+        #installContainer {
+            position: absolute;
+            bottom: 200px;
+            left: 10px;
+            z-index: 1000;
+            pointer-events: none;
+        }
+        .install-btn {
+            pointer-events: auto;
+            background: #2d5a27;
+            color: #fff;
+            border: none;
+            border-radius: 40px;
+            padding: 10px 16px;
+            font-size: 13px;
+            font-weight: 700;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            transition: 0.2s;
+            white-space: nowrap;
+        }
+        .install-btn:hover {
+            background: #1e3f1a;
+            transform: scale(1.02);
+        }
+        .install-btn:active {
+            transform: scale(0.95);
+        }
+        @media (min-width: 769px) {
+            #installContainer {
+                display: none !important;
+            }
+        }
+        @media (max-width: 600px) {
+            #installContainer {
+                bottom: 240px;
+                left: 8px;
+            }
+            .install-btn {
+                padding: 8px 12px;
+                font-size: 11px;
+                border-radius: 30px;
+            }
+        }
+        @media (max-width: 370px) {
+            #installContainer {
+                bottom: 230px;
+                left: 6px;
+            }
+            .install-btn {
+                padding: 6px 10px;
+                font-size: 10px;
+            }
+        }
 
-@media (max-width: 370px) {
-    .install-btn {
-        padding: 6px 10px;
-        font-size: 10px;
-    }
-    #installContainer {
-        bottom: 90px;
-        left: 6px;        /* ← allineato a sinistra */
-    }
-}
-        
-/* ================================= */
-/* REGOLE PER SMARTPHONE (max-width: 600px) */
-/* ================================= */
-@media (max-width: 600px) {
-    /* Barra filtri più compatta e spostata a destra */
-    .filter-bar {
-        top: 10px;
-        right: 10px;
-        padding: 4px 6px;
-        gap: 3px;
-        max-width: calc(100% - 140px);
-        background: rgba(255,255,255,0.92);
-        border-radius: 30px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-        flex-wrap: nowrap;  /* impedisce il wrap su due righe */
-        overflow-x: auto;   /* se troppo lunghi, scrollano orizzontalmente */
-        -webkit-overflow-scrolling: touch;
-    }
-    .filter-btn {
-        padding: 3px 8px;
-        font-size: 10px;
-        white-space: nowrap;
-        border-radius: 20px;
-        flex-shrink: 0;
-    }
+        /* RESPONSIVE */
+        @media (max-width: 600px) {
+            .locate-container {
+                top: 12px;
+                left: 10px;
+            }
+            .locate-btn {
+                padding: 4px 10px;
+                font-size: 11px;
+                border-radius: 20px;
+            }
+            #locationStatus {
+                top: 12px;
+                font-size: 11px;
+                padding: 4px 14px;
+                white-space: nowrap;
+            }
+            #controlPanel {
+                bottom: 12px;
+                left: 8px;
+                right: 8px;
+                padding: 12px 12px;
+                max-height: 55vh;
+                border-radius: 14px;
+            }
+            #recordingControls {
+                gap: 6px;
+                padding-bottom: 8px;
+            }
+            #recordingControls input {
+                font-size: 13px;
+                padding: 6px 10px;
+                flex: 1 1 100px;
+            }
+            .rec-btn {
+                font-size: 12px;
+                padding: 6px 12px;
+            }
+            #recordingInfo {
+                font-size: 11px;
+                gap: 6px;
+            }
+            #tracksSection h4 {
+                font-size: 13px;
+            }
+            #trackListItems li {
+                font-size: 12px;
+                padding: 4px 2px;
+            }
+            #trackListItems li input[type="checkbox"] {
+                width: 16px;
+                height: 16px;
+            }
+            .track-actions button {
+                font-size: 11px;
+                padding: 4px 10px;
+            }
+            .leaflet-control-zoom {
+                display: none !important;
+            }
+        }
 
-    /* Pulsante geolocalizzazione più piccolo e più in basso */
-    .locate-container {
-        top: 12px;
-        left: 10px;
-        z-index: 1000;
-    }
-    .locate-btn {
-        padding: 4px 8px;
-        font-size: 11px;
-        border-radius: 20px;
-        background: #4caf50;
-        color: white;
-        border: none;
-        font-weight: bold;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-    }
+        @media (max-width: 370px) {
+            .locate-container {
+                top: 8px;
+                left: 6px;
+            }
+            .locate-btn {
+                padding: 3px 8px;
+                font-size: 10px;
+            }
+            #locationStatus {
+                top: 8px;
+                font-size: 10px;
+                padding: 3px 10px;
+            }
+            #controlPanel {
+                padding: 10px 8px;
+                bottom: 8px;
+                left: 4px;
+                right: 4px;
+            }
+            #recordingControls input {
+                font-size: 11px;
+                padding: 5px 8px;
+                flex: 1 1 70px;
+            }
+            .rec-btn {
+                font-size: 10px;
+                padding: 5px 8px;
+            }
+            #trackListItems li {
+                font-size: 11px;
+            }
+        }
 
-    /* Nascondi i controlli zoom di Leaflet su mobile (opzionale) */
-    .leaflet-control-zoom {
-        display: none !important;
-    }
-
-    /* Nascondi il contatore */
-    .counter {
-        display: none;
-    }
-
-    /* Legenda più in alto per evitare sovrapposizioni */
-    .legend {
-        font-size: 10px;
-        bottom: 80px;
-        right: 10px;
-        padding: 6px 10px;
-        background: rgba(255,255,255,0.85);
-        border-radius: 10px;
-    }
-
-    .offline-msg {
-        top: 70px;
-        font-size: 10px;
-        white-space: nowrap;
-    }
-
-    .workinprogress {
-        bottom: 60px;
-        font-size: 10px;
-        padding: 4px 12px;
-        white-space: nowrap;
-    }
-
-    .mappa-bianca-credit {
-        font-size: 9px;
-        padding: 3px 10px;
-        bottom: 20px;
-        white-space: nowrap;
-    }
-}
-
-/* ================================= */
-/* REGOLE PER SMARTPHONE MOLTO PICCOLI (max-width: 370px) */
-/* ================================= */
-@media (max-width: 370px) {
-    .filter-bar {
-        max-width: calc(100% - 100px);  /* ancora più stretto */
-        padding: 3px 4px;
-        gap: 2px;
-        top: 8px;
-        right: 8px;
-    }
-    .filter-btn {
-        padding: 2px 6px;
-        font-size: 9px;
-        border-radius: 16px;
-    }
-
-    .locate-container {
-        top: 8px;
-        left: 6px;
-    }
-    .locate-btn {
-        padding: 3px 6px;
-        font-size: 10px;
-        border-radius: 16px;
-    }
-
-    .workinprogress {
-        font-size: 8px;
-        padding: 3px 10px;
-        bottom: 50px;
-        white-space: nowrap;
-    }
-
-    .legend {
-        font-size: 9px;
-        bottom: 70px;
-        right: 6px;
-        padding: 4px 8px;
-    }
-
-    .mappa-bianca-credit {
-        font-size: 8px;
-        padding: 2px 8px;
-        bottom: 16px;
-    }
-}
+        .hidden {
+            display: none !important;
+        }
+        .text-muted {
+            color: #999;
+        }
     </style>
 </head>
 <body>
+
+    <!-- OVERLAY DI CARICAMENTO -->
+    <div id="loadingOverlay">
+        <div class="spinner"></div>
+        <div>📡 Ricerca della tua posizione...</div>
+        <div class="sub">Stiamo centrando la mappa</div>
+        <div class="error-msg" id="loadingError">⏱️ Posizione non disponibile</div>
+        <button class="retry-btn" id="loadingRetryBtn">🔄 Riprova</button>
+    </div>
+
+    <!-- MAPPA -->
     <div id="map"></div>
-    <div class="workinprogress">
-        🔧 Lavori in corso – Questa è un'anteprima. Contenuti in arrivo.
-    </div>
-    <!-- Pulsante di installazione della PWA (visibile solo su mobile) -->
-    <div id="installContainer" style="display: none;">
-        <button id="installAppBtn" class="install-btn">
-            📲 Installa l'app
-        </button>
-    </div>
-    <div class="filter-bar" id="filterBar"></div>
+
+    <!-- STATUS POSIZIONE -->
+    <div id="locationStatus">📡 Ricerca posizione in corso...</div>
+
+    <!-- PULSANTE GEOLOCALIZZAZIONE -->
     <div class="locate-container">
         <button id="locateBtn" class="locate-btn">📍 La mia posizione</button>
     </div>
-    <div class="legend" id="legend"></div>
-    <div class="counter" id="counter">Caricamento...</div>
-    <div class="offline-msg" id="offlineMsg">⚠️ Modalità offline – alcune aree potrebbero non essere visibili</div>
-    <div class="mappa-bianca-credit">
-        Powered by <strong>Mappa Bianca</strong> | <a href="https://vival18.github.io/mappa-bianca/" target="_blank" rel="noopener noreferrer">Scopri di più</a>
+
+    <!-- PANNELLO DI CONTROLLO -->
+    <div id="controlPanel">
+        <!-- Registrazione -->
+        <div id="recordingControls">
+            <input type="text" id="trackName" placeholder="Nome percorso (opzionale)" />
+            <button id="btnStartStop" class="rec-btn rec-btn-start">▶️ Inizia</button>
+            <button id="btnSave" class="rec-btn rec-btn-save" disabled>💾 Salva</button>
+            <button id="resumeDraftBtn" style="display:none;">📂 Riprendi bozza</button>
+        </div>
+
+        <!-- Info registrazione -->
+        <div id="recordingInfo">
+            <span class="pts">📍 Punti: 0</span>
+            <span class="dist">📏 Distanza: 0 m</span>
+        </div>
+
+        <!-- Lista percorsi salvati -->
+        <div id="tracksSection">
+            <h4>
+                📂 I tuoi percorsi
+                <small id="trackCount">0</small>
+            </h4>
+            <ul id="trackListItems">
+                <li class="empty-msg">Nessun percorso salvato.</li>
+            </ul>
+            <div class="track-actions">
+                <button id="btnClearTracks" class="btn-clear-all">🗑️ Cancella tutti</button>
+                <button id="btnExportGeoJSON" class="btn-export-geojson">📤 GeoJSON</button>
+                <button id="btnExportGPX" class="btn-export-gpx">📤 GPX</button>
+            </div>
+        </div>
     </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+    <!-- INSTALLAZIONE PWA -->
+    <div id="installContainer" style="display:none;">
+        <button id="installAppBtn" class="install-btn">📲 Installa l'app</button>
+    </div>
 
+    <!-- LIBRERIE -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+    </script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js">
+    </script>
+
+    <!-- ============================================================ -->
+    <!-- JAVASCRIPT PRINCIPALE -->
+    <!-- ============================================================ -->
     <script>
-        // ========================
-        // 1. VARIABILI GLOBALI
-        // ========================
-        let map;
-        let markerClusterGroup;
-        let allMarkers = [];
-        let currentFilter = 'Tutti';
+        (function() {
+            'use strict';
 
-        const colorMap = {
-            'opera': '#e31a23',
-            'servizio': '#1e90ff',
-            'storico': '#ff8c00'
-        };
-
-        const categoryNames = {
-            'opera': 'Opere',
-            'servizio': 'Servizi',
-            'storico': 'Punti storici'
-        };
-
-        // ========================
-        // 2. FUNZIONI DI MAPPA E MARKER
-        // ========================
-        function getColoredIcon(color) {
-            return L.divIcon({
-                html: `<div style="background-color: ${color}; width: 28px; height: 28px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 4px rgba(0,0,0,0.5);"></div>`,
-                iconSize: [28, 28],
-                className: 'custom-marker',
-                popupAnchor: [0, -14]
+            // ========================================
+            //  1. MAPPA
+            // ========================================
+            const map = L.map('map', {
+                center: [45.620, 10.830],
+                zoom: 14,
             });
-        }
 
-function initMap() {
-    map = L.map('map', {
-        center: [45.620474, 10.829623],
-        zoom: 15
-    });
-    
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-    }).addTo(map);
-    
-    // Nessun localStorage, nessun ripristino
-    
-    // Eventuale debug
-    map.on('click', function(e) {
-        console.log(`📍 [${e.latlng.lat.toFixed(6)}, ${e.latlng.lng.toFixed(6)}]`);
-    });
-    
-    markerClusterGroup = L.markerClusterGroup({
-        showCoverageOnHover: false,
-        maxClusterRadius: 80,
-        disableClusteringAtZoom: 18
-    });
-    map.addLayer(markerClusterGroup);
-}
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+            }).addTo(map);
 
-        function addSentieroFromGeoJSON() {
-            fetch('./mappaturasentieroarte.geojson')
-                .then(response => {
-                    if (!response.ok) throw new Error('GeoJSON non trovato');
-                    return response.json();
-                })
-                .then(geojsonData => {
-                    const sentieroLayer = L.geoJSON(geojsonData, {
-                        style: { color: 'red', weight: 4, dashArray: '8, 8', fill: false },
-                        onEachFeature: (feature, layer) => {
-                            if (feature.properties?.name) layer.bindPopup(feature.properties.name);
-                            else if (feature.properties?.description) layer.bindPopup(feature.properties.description);
-                        }
-                    }).addTo(map);
-                    map.fitBounds(sentieroLayer.getBounds());
-                })
-                .catch(error => {
-                    console.error(error);
-                    alert('Sentiero GeoJSON non trovato. Verifica che "mappaturasentieroarte.geojson" sia nella cartella.');
-                    const defaultSentiero = L.polyline([
-                        [45.618771, 10.824897],
-                        [45.618800, 10.825000]
-                    ], { color: 'red', weight: 4 }).addTo(map);
-                    map.fitBounds(defaultSentiero.getBounds());
-                });
-        }
-
-        function updateCounter() {
-            const visible = markerClusterGroup.getLayers().length;
-            document.getElementById('counter').innerHTML = `📍 ${visible} / ${allMarkers.length} punti`;
-        }
-
-        function filterMarkers(category) {
-            currentFilter = category;
-            markerClusterGroup.clearLayers();
-            allMarkers.forEach(item => {
-                let match = false;
-                if (category === 'Tutti') match = true;
-                else if (category === 'Opere' && item.tipologia === 'opera') match = true;
-                else if (category === 'Servizi' && item.tipologia === 'servizio') match = true;
-                else if (category === 'Punti Storici' && item.tipologia === 'storico') match = true;
-                if (match) markerClusterGroup.addLayer(item.marker);
+            map.on('click', function(e) {
+                console.log(`📍 [${e.latlng.lat.toFixed(6)}, ${e.latlng.lng.toFixed(6)}]`);
             });
-            updateCounter();
-        }
 
-        function buildFilters() {
-            const filterDiv = document.getElementById('filterBar');
-            filterDiv.innerHTML = '';
-            const buttons = ['Tutti', 'Opere', 'Servizi', 'Punti Storici'];
-            buttons.forEach(cat => {
-                const btn = document.createElement('button');
-                btn.textContent = cat;
-                btn.classList.add('filter-btn');
-                if (cat === 'Tutti') btn.classList.add('active');
-                btn.addEventListener('click', () => {
-                    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    filterMarkers(cat);
-                });
-                filterDiv.appendChild(btn);
-            });
-        }
+            // ========================================
+            //  2. VARIABILI GLOBALI
+            // ========================================
+            let watchId = null;
+            let trackPoints = [];
+            let isRecording = false;
+            let currentTrackPolyline = null;
 
-        function buildLegend(uniqueTypes) {
-            const legendDiv = document.getElementById('legend');
-            legendDiv.innerHTML = '<strong>Legenda</strong><br>';
-            if (uniqueTypes.length === 0) {
-                legendDiv.innerHTML += '<span style="background-color:red;"></span> Sentiero<br>';
-                return;
+            // Marker temporaneo per la posizione corrente
+            let currentPositionMarker = null;
+
+            // Marker di partenza e arrivo
+            let startMarker = null;
+            let endMarker = null;
+
+            // Distanza percorsa (metri)
+            let totalDistance = 0;
+
+            // Contatore punti per salvataggio automatico
+            let pointCounter = 0;
+            const AUTOSAVE_INTERVAL = 5;
+
+            // Bozza (draft) per salvataggio automatico
+            let draftPoints = [];
+            let draftName = '';
+
+            let savedTracks = [];
+            const trackPolylines = {};
+
+            const STORAGE_KEY = 'mappa_bianca_tracks';
+            const DRAFT_KEY = 'mappa_bianca_draft';
+
+            // Riferimenti DOM
+            const $ = (id) => document.getElementById(id);
+            const trackNameInput = $('trackName');
+            const btnStartStop = $('btnStartStop');
+            const btnSave = $('btnSave');
+            const trackListItems = $('trackListItems');
+            const trackCount = $('trackCount');
+            const btnClearTracks = $('btnClearTracks');
+            const btnExportGeoJSON = $('btnExportGeoJSON');
+            const btnExportGPX = $('btnExportGPX');
+            const locateBtn = $('locateBtn');
+            const locationStatus = $('locationStatus');
+            const recordingInfo = $('recordingInfo');
+            const ptsSpan = recordingInfo.querySelector('.pts');
+            const distSpan = recordingInfo.querySelector('.dist');
+            const resumeDraftBtn = $('resumeDraftBtn');
+
+            // Elementi overlay
+            const loadingOverlay = $('loadingOverlay');
+            const loadingError = $('loadingError');
+            const loadingRetryBtn = $('loadingRetryBtn');
+
+            let userMarker = null;
+            let userCircle = null;
+
+            let locationTimeout = null;
+            const LOCATION_TIMEOUT_MS = 10000;
+
+            // ========================================
+            //  3. UTILITY: DISTANZA (Haversine)
+            // ========================================
+            function toRad(deg) {
+                return deg * Math.PI / 180;
             }
-            const order = ['opera', 'servizio', 'storico'];
-            order.forEach(cat => {
-                if (uniqueTypes.includes(cat)) {
-                    legendDiv.innerHTML += `<span style="background-color: ${colorMap[cat]};"></span> ${categoryNames[cat]}<br>`;
+
+            function haversineDistance(lat1, lon1, lat2, lon2) {
+                const R = 6371000; // raggio Terra in metri
+                const dLat = toRad(lat2 - lat1);
+                const dLon = toRad(lon2 - lon1);
+                const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+                    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                return R * c;
+            }
+
+            function formatDistance(meters) {
+                if (meters < 1000) return Math.round(meters) + ' m';
+                return (meters / 1000).toFixed(2) + ' km';
+            }
+
+            // ========================================
+            //  4. GESTIONE TRACCE (localStorage)
+            // ========================================
+            function loadTracks() {
+                try {
+                    const raw = localStorage.getItem(STORAGE_KEY);
+                    savedTracks = raw ? JSON.parse(raw) : [];
+                } catch (_) {
+                    savedTracks = [];
+                }
+                savedTracks = savedTracks.filter(t => t && t.points && t.points.length > 0);
+                savedTracks.forEach(t => {
+                    if (!t.id) t.id = Date.now().toString() + Math.random().toString(36).slice(2, 6);
+                });
+                return savedTracks;
+            }
+
+            function saveTracksToStorage() {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(savedTracks));
+            }
+
+            // ========================================
+            //  5. GESTIONE BOZZA (draft)
+            // ========================================
+            function saveDraft(points, name) {
+                if (!points || points.length === 0) {
+                    localStorage.removeItem(DRAFT_KEY);
+                    return;
+                }
+                const draft = {
+                    points: points.slice(),
+                    name: name || '',
+                    timestamp: Date.now()
+                };
+                localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
+                resumeDraftBtn.style.display = 'inline-block';
+            }
+
+            function loadDraft() {
+                try {
+                    const raw = localStorage.getItem(DRAFT_KEY);
+                    if (!raw) return null;
+                    const draft = JSON.parse(raw);
+                    if (draft.points && draft.points.length > 0) {
+                        return draft;
+                    }
+                    return null;
+                } catch (_) {
+                    return null;
+                }
+            }
+
+            function clearDraft() {
+                localStorage.removeItem(DRAFT_KEY);
+                resumeDraftBtn.style.display = 'none';
+            }
+
+            // ========================================
+            //  6. DISEGNO TRACCE E MARKER
+            // ========================================
+            function drawTrack(track, visible) {
+                const id = track.id;
+                if (trackPolylines[id]) {
+                    map.removeLayer(trackPolylines[id]);
+                    delete trackPolylines[id];
+                }
+                if (!track.points || track.points.length < 2) return;
+
+                const color = track.color || generateColor(savedTracks.indexOf(track));
+                const polyline = L.polyline(track.points, {
+                    color: color,
+                    weight: 4,
+                    opacity: 0.8,
+                    smoothFactor: 1,
+                });
+                if (visible !== false) {
+                    polyline.addTo(map);
+                }
+                trackPolylines[id] = polyline;
+                track.color = color;
+
+                // Aggiungi marker di partenza e arrivo (se presenti)
+                if (track.startMarker) {
+                    L.marker(track.startMarker, {
+                        icon: L.divIcon({
+                            html: '<div style="background:#2ecc71;width:14px;height:14px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 4px rgba(0,0,0,0.5);"></div>',
+                            iconSize: [14, 14],
+                            className: 'start-marker'
+                        })
+                    }).addTo(map).bindPopup('🚀 Partenza');
+                }
+                if (track.endMarker) {
+                    L.marker(track.endMarker, {
+                        icon: L.divIcon({
+                            html: '<div style="background:#e74c3c;width:14px;height:14px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 4px rgba(0,0,0,0.5);"></div>',
+                            iconSize: [14, 14],
+                            className: 'end-marker'
+                        })
+                    }).addTo(map).bindPopup('🏁 Arrivo');
+                }
+            }
+
+            function redrawAllTracks() {
+                Object.keys(trackPolylines).forEach(id => {
+                    map.removeLayer(trackPolylines[id]);
+                    delete trackPolylines[id];
+                });
+                savedTracks.forEach(t => drawTrack(t, true));
+            }
+
+            function toggleTrackVisibility(id, visible) {
+                if (trackPolylines[id]) {
+                    if (visible) {
+                        map.addLayer(trackPolylines[id]);
+                    } else {
+                        map.removeLayer(trackPolylines[id]);
+                    }
+                }
+            }
+
+            function generateColor(index) {
+                const palette = [
+                    '#e31a23', '#1e90ff', '#ff8c00', '#2ecc71',
+                    '#9b59b6', '#f1c40f', '#e67e22', '#1abc9c',
+                    '#e74c3c', '#3498db', '#2c3e50', '#d35400'
+                ];
+                return palette[index % palette.length];
+            }
+
+            // ========================================
+            //  7. RENDER LISTA PERCORSI
+            // ========================================
+            function renderTrackList() {
+                trackListItems.innerHTML = '';
+                if (savedTracks.length === 0) {
+                    trackListItems.innerHTML = '<li class="empty-msg">Nessun percorso salvato.</li>';
+                    trackCount.textContent = '0';
+                    return;
+                }
+                trackCount.textContent = savedTracks.length;
+
+                savedTracks.forEach((track, idx) => {
+                    const li = document.createElement('li');
+
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.checked = true;
+                    checkbox.dataset.trackId = track.id;
+                    checkbox.addEventListener('change', function() {
+                        toggleTrackVisibility(track.id, this.checked);
+                    });
+
+                    const nameSpan = document.createElement('span');
+                    nameSpan.className = 'track-name';
+                    nameSpan.textContent = track.name || `Percorso ${idx + 1}`;
+                    nameSpan.title = 'Clicca per centrare la mappa';
+                    nameSpan.addEventListener('click', function() {
+                        if (track.points && track.points.length > 0) {
+                            const bounds = L.latLngBounds(track.points);
+                            map.fitBounds(bounds, { padding: [30, 30] });
+                        }
+                    });
+
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'track-delete';
+                    deleteBtn.textContent = '✕';
+                    deleteBtn.title = 'Elimina questo percorso';
+                    deleteBtn.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        deleteTrack(track.id);
+                    });
+
+                    li.appendChild(checkbox);
+                    li.appendChild(nameSpan);
+                    li.appendChild(deleteBtn);
+                    trackListItems.appendChild(li);
+                });
+            }
+
+            function deleteTrack(id) {
+                if (!confirm('Eliminare questo percorso?')) return;
+                savedTracks = savedTracks.filter(t => t.id !== id);
+                saveTracksToStorage();
+                if (trackPolylines[id]) {
+                    map.removeLayer(trackPolylines[id]);
+                    delete trackPolylines[id];
+                }
+                renderTrackList();
+            }
+
+            function clearAllTracks() {
+                if (savedTracks.length === 0) return;
+                if (!confirm('Eliminare TUTTI i percorsi salvati?')) return;
+                savedTracks = [];
+                saveTracksToStorage();
+                Object.keys(trackPolylines).forEach(id => {
+                    map.removeLayer(trackPolylines[id]);
+                    delete trackPolylines[id];
+                });
+                renderTrackList();
+            }
+
+            // ========================================
+            //  8. ESPORTAZIONE GeoJSON e GPX
+            // ========================================
+            function exportGeoJSON() {
+                if (savedTracks.length === 0) {
+                    alert('Nessun percorso da esportare.');
+                    return;
+                }
+                const features = savedTracks.map(track => {
+                    const coords = track.points.map(p => [p.lng, p.lat]);
+                    const props = {
+                        name: track.name || 'Percorso senza nome',
+                        id: track.id,
+                        color: track.color || '#3388ff',
+                        timestamp: track.timestamp || null,
+                        distance: track.distance || 0,
+                    };
+                    if (track.startMarker) props.start = track.startMarker;
+                    if (track.endMarker) props.end = track.endMarker;
+                    return {
+                        type: 'Feature',
+                        properties: props,
+                        geometry: {
+                            type: 'LineString',
+                            coordinates: coords,
+                        }
+                    };
+                });
+                const geojson = {
+                    type: 'FeatureCollection',
+                    features: features,
+                };
+                downloadFile(JSON.stringify(geojson, null, 2), 'application/json', `percorsi_${new Date().toISOString().slice(0,10)}.geojson`);
+            }
+
+            function exportGPX() {
+                if (savedTracks.length === 0) {
+                    alert('Nessun percorso da esportare.');
+                    return;
+                }
+                let gpx = '<?xml version="1.0" encoding="UTF-8"?>\n';
+                gpx += '<gpx version="1.1" creator="Mappa Bianca Maker" xmlns="http://www.topografix.com/GPX/1/1">\n';
+                gpx += '  <metadata>\n';
+                gpx += `    <time>${new Date().toISOString()}</time>\n`;
+                gpx += '  </metadata>\n';
+
+                savedTracks.forEach((track, idx) => {
+                    const name = track.name || `Percorso ${idx + 1}`;
+                    gpx += `  <trk>\n`;
+                    gpx += `    <name>${escapeXml(name)}</name>\n`;
+                    gpx += `    <desc>Distanza: ${formatDistance(track.distance || 0)}</desc>\n`;
+                    gpx += `    <trkseg>\n`;
+                    track.points.forEach(p => {
+                        gpx += `      <trkpt lat="${p.lat}" lon="${p.lng}">\n`;
+                        gpx += `        <ele>0</ele>\n`;
+                        gpx += `        <time>${new Date().toISOString()}</time>\n`;
+                        gpx += `      </trkpt>\n`;
+                    });
+                    gpx += `    </trkseg>\n`;
+                    gpx += `  </trk>\n`;
+
+                    // Waypoint di partenza e arrivo
+                    if (track.startMarker) {
+                        gpx += `  <wpt lat="${track.startMarker.lat}" lon="${track.startMarker.lng}">\n`;
+                        gpx += `    <name>Partenza</name>\n`;
+                        gpx += `    <sym>Green Pin</sym>\n`;
+                        gpx += `  </wpt>\n`;
+                    }
+                    if (track.endMarker) {
+                        gpx += `  <wpt lat="${track.endMarker.lat}" lon="${track.endMarker.lng}">\n`;
+                        gpx += `    <name>Arrivo</name>\n`;
+                        gpx += `    <sym>Red Pin</sym>\n`;
+                        gpx += `  </wpt>\n`;
+                    }
+                });
+
+                gpx += '</gpx>';
+                downloadFile(gpx, 'application/gpx+xml', `percorsi_${new Date().toISOString().slice(0,10)}.gpx`);
+            }
+
+            function escapeXml(str) {
+                return str.replace(/[<>&'"]/g, c => {
+                    switch (c) {
+                        case '<':
+                            return '&lt;';
+                        case '>':
+                            return '&gt;';
+                        case '&':
+                            return '&amp;';
+                        case '\'':
+                            return '&apos;';
+                        case '"':
+                            return '&quot;';
+                        default:
+                            return c;
+                    }
+                });
+            }
+
+            function downloadFile(content, mimeType, filename) {
+                const blob = new Blob([content], { type: mimeType });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+
+            // ========================================
+            //  9. GEOLOCALIZZAZIONE (con validazione e overlay)
+            // ========================================
+            function isValidCoordinate(lat, lng) {
+                return typeof lat === 'number' && !isNaN(lat) &&
+                    typeof lng === 'number' && !isNaN(lng) &&
+                    lat >= -90 && lat <= 90 &&
+                    lng >= -180 && lng <= 180;
+            }
+
+            function onLocationFound(pos) {
+                const lat = pos.latitude;
+                const lng = pos.longitude;
+                const accuracy = pos.accuracy || 50;
+
+                if (!isValidCoordinate(lat, lng)) {
+                    console.warn('Coordinate non valide:', lat, lng);
+                    showErrorToast('Coordinate GPS non valide. Riprova.');
+                    return;
+                }
+
+                map.flyTo([lat, lng], 16, { duration: 1.2 });
+
+                if (userMarker) map.removeLayer(userMarker);
+                if (userCircle) map.removeLayer(userCircle);
+                const icon = L.divIcon({
+                    html: '<div style="background:#2196f3;width:20px;height:20px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 6px rgba(0,0,0,0.4);"></div>',
+                    iconSize: [20, 20],
+                    className: 'user-marker',
+                });
+                userMarker = L.marker([lat, lng], { icon }).addTo(map).bindPopup('Sei qui').openPopup();
+                userCircle = L.circle([lat, lng], {
+                    radius: accuracy,
+                    color: '#2196f3',
+                    weight: 1,
+                    fillOpacity: 0.08,
+                }).addTo(map);
+            }
+
+            function showErrorToast(message) {
+                const toast = document.createElement('div');
+                toast.style.cssText =
+                    'position:fixed;bottom:200px;left:50%;transform:translateX(-50%);background:rgba(200,0,0,0.85);color:#fff;padding:6px 18px;border-radius:30px;z-index:9999;font-size:13px;font-weight:500;pointer-events:none;transition:opacity 0.5s;';
+                toast.textContent = '⚠️ ' + message;
+                document.body.appendChild(toast);
+                setTimeout(() => { toast.style.opacity = '0'; }, 3000);
+                setTimeout(() => { document.body.removeChild(toast); }, 3800);
+            }
+
+            function handleLocationSuccess(pos) {
+                if (locationTimeout) {
+                    clearTimeout(locationTimeout);
+                    locationTimeout = null;
+                }
+                loadingOverlay.classList.add('hidden');
+                locateBtn.textContent = '📍 La mia posizione';
+                locateBtn.disabled = false;
+                locationStatus.style.display = 'none';
+
+                if (!pos || !pos.coords) {
+                    showErrorToast('Risposta GPS incompleta.');
+                    return;
+                }
+                const lat = pos.coords.latitude;
+                const lng = pos.coords.longitude;
+                if (!isValidCoordinate(lat, lng)) {
+                    showErrorToast('Coordinate GPS non valide.');
+                    return;
+                }
+                onLocationFound({
+                    latitude: lat,
+                    longitude: lng,
+                    accuracy: pos.coords.accuracy || 50
+                });
+            }
+
+            function handleLocationError(err) {
+                if (locationTimeout) {
+                    clearTimeout(locationTimeout);
+                    locationTimeout = null;
+                }
+                console.warn('Errore geolocalizzazione:', err);
+                loadingOverlay.classList.add('hidden');
+                locateBtn.textContent = '📍 La mia posizione';
+                locateBtn.disabled = false;
+                locationStatus.style.display = 'none';
+
+                let msg = 'Posizione non disponibile.';
+                if (err.code === 1) msg = 'Permesso negato. Usa il pulsante per riprovare.';
+                else if (err.code === 2) msg = 'Segnale GPS debole.';
+                else if (err.code === 3) msg = 'Timeout. Riprova.';
+                showErrorToast(msg);
+            }
+
+            function onLocationTimeout() {
+                locationTimeout = null;
+                if (!loadingOverlay.classList.contains('hidden')) {
+                    loadingOverlay.classList.add('hidden');
+                    showErrorToast('Tempo scaduto per la posizione. Riprova.');
+                }
+                locateBtn.textContent = '📍 La mia posizione';
+                locateBtn.disabled = false;
+                locationStatus.style.display = 'none';
+            }
+
+            function requestLocation(showStatus = true, showOverlay = true) {
+                if (!navigator.geolocation) {
+                    alert('Il tuo browser non supporta la geolocalizzazione.');
+                    return;
+                }
+                loadingError.style.display = 'none';
+                loadingRetryBtn.style.display = 'none';
+
+                if (showOverlay) {
+                    loadingOverlay.classList.remove('hidden');
+                    loadingOverlay.querySelector('div:first-child + div').textContent = '📡 Ricerca della tua posizione...';
+                    loadingOverlay.querySelector('.sub').textContent = 'Stiamo centrando la mappa';
+                }
+
+                if (showStatus) {
+                    locationStatus.style.display = 'block';
+                    locationStatus.textContent = '📡 Ricerca posizione in corso...';
+                }
+
+                locateBtn.textContent = '📍 Ricerca...';
+                locateBtn.disabled = true;
+
+                if (locationTimeout) clearTimeout(locationTimeout);
+                locationTimeout = setTimeout(onLocationTimeout, LOCATION_TIMEOUT_MS);
+
+                navigator.geolocation.getCurrentPosition(
+                    handleLocationSuccess,
+                    handleLocationError, {
+                        enableHighAccuracy: true,
+                        timeout: 10000,
+                        maximumAge: 60000,
+                    }
+                );
+            }
+
+            // ========================================
+            //  10. REGISTRAZIONE GPS
+            // ========================================
+            function startRecording() {
+                if (!navigator.geolocation) {
+                    alert('Il tuo browser non supporta la geolocalizzazione.');
+                    return;
+                }
+
+                // Resetta tutto
+                if (currentTrackPolyline) {
+                    map.removeLayer(currentTrackPolyline);
+                    currentTrackPolyline = null;
+                }
+                if (currentPositionMarker) {
+                    map.removeLayer(currentPositionMarker);
+                    currentPositionMarker = null;
+                }
+                if (startMarker) {
+                    map.removeLayer(startMarker);
+                    startMarker = null;
+                }
+                if (endMarker) {
+                    map.removeLayer(endMarker);
+                    endMarker = null;
+                }
+
+                trackPoints = [];
+                totalDistance = 0;
+                pointCounter = 0;
+                updateRecordingInfo();
+
+                const options = {
+                    enableHighAccuracy: true,
+                    maximumAge: 5000,
+                    timeout: 15000,
+                };
+
+                watchId = navigator.geolocation.watchPosition(
+                    function(pos) {
+                        const lat = pos.coords.latitude;
+                        const lng = pos.coords.longitude;
+                        if (isValidCoordinate(lat, lng)) {
+                            // Se è il primo punto, imposta marker partenza
+                            if (trackPoints.length === 0) {
+                                addStartMarker(lat, lng);
+                            }
+                            trackPoints.push({ lat, lng });
+                            pointCounter++;
+
+                            // Calcola distanza
+                            if (trackPoints.length >= 2) {
+                                const prev = trackPoints[trackPoints.length - 2];
+                                const curr = trackPoints[trackPoints.length - 1];
+                                totalDistance += haversineDistance(prev.lat, prev.lng, curr.lat, curr.lng);
+                            }
+
+                            // Aggiorna marker corrente
+                            updateCurrentPositionMarker(lat, lng);
+
+                            // Aggiorna polyline
+                            updateTempPolyline();
+
+                            // Aggiorna info
+                            updateRecordingInfo();
+
+                            // Salvataggio automatico ogni 5 punti
+                            if (pointCounter % AUTOSAVE_INTERVAL === 0) {
+                                const name = trackNameInput.value.trim() || 'Bozza';
+                                saveDraft(trackPoints, name);
+                            }
+                        } else {
+                            console.warn('Coordinate ignorate (non valide):', lat, lng);
+                        }
+                    },
+                    function(err) {
+                        console.warn('Errore GPS durante registrazione:', err);
+                        let msg = 'Errore GPS. ';
+                        if (err.code === 1) msg += 'Permesso negato.';
+                        else if (err.code === 2) msg += 'Segnale assente.';
+                        else if (err.code === 3) msg += 'Timeout.';
+                        showErrorToast(msg);
+                        stopRecording();
+                    },
+                    options
+                );
+
+                isRecording = true;
+                btnStartStop.textContent = '⏹️ Ferma';
+                btnStartStop.classList.add('recording');
+                btnSave.disabled = true;
+                trackNameInput.disabled = true;
+                clearDraft(); // Cancella bozza precedente
+            }
+
+            function stopRecording() {
+                if (watchId) {
+                    navigator.geolocation.clearWatch(watchId);
+                    watchId = null;
+                }
+                isRecording = false;
+                btnStartStop.textContent = '▶️ Inizia';
+                btnStartStop.classList.remove('recording');
+                btnSave.disabled = (trackPoints.length < 2);
+                trackNameInput.disabled = false;
+
+                // Aggiungi marker arrivo
+                if (trackPoints.length >= 2) {
+                    const last = trackPoints[trackPoints.length - 1];
+                    addEndMarker(last.lat, last.lng);
+                }
+
+                // Rimuovi marker corrente
+                if (currentPositionMarker) {
+                    map.removeLayer(currentPositionMarker);
+                    currentPositionMarker = null;
+                }
+
+                // Se ci sono punti, salva bozza finale
+                if (trackPoints.length >= 2) {
+                    const name = trackNameInput.value.trim() || 'Bozza';
+                    saveDraft(trackPoints, name);
+                }
+            }
+
+            function updateTempPolyline() {
+                if (currentTrackPolyline) {
+                    map.removeLayer(currentTrackPolyline);
+                    currentTrackPolyline = null;
+                }
+                if (trackPoints.length < 2) return;
+                currentTrackPolyline = L.polyline(trackPoints, {
+                    color: '#00cc00',
+                    weight: 5,
+                    opacity: 0.9,
+                    dashArray: '6, 6',
+                }).addTo(map);
+                if (trackPoints.length > 5) {
+                    const bounds = L.latLngBounds(trackPoints);
+                    map.fitBounds(bounds, { padding: [40, 40] });
+                }
+            }
+
+            function updateCurrentPositionMarker(lat, lng) {
+                if (currentPositionMarker) {
+                    map.removeLayer(currentPositionMarker);
+                }
+                const icon = L.divIcon({
+                    html: '<div style="background:#2ecc71;width:16px;height:16px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 6px rgba(0,0,0,0.5);"></div>',
+                    iconSize: [16, 16],
+                    className: 'current-marker'
+                });
+                currentPositionMarker = L.marker([lat, lng], { icon }).addTo(map);
+            }
+
+            function addStartMarker(lat, lng) {
+                if (startMarker) map.removeLayer(startMarker);
+                const icon = L.divIcon({
+                    html: '<div style="background:#2ecc71;width:18px;height:18px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 6px rgba(0,0,0,0.5);"></div>',
+                    iconSize: [18, 18],
+                    className: 'start-marker'
+                });
+                startMarker = L.marker([lat, lng], { icon }).addTo(map).bindPopup('🚀 Partenza');
+            }
+
+            function addEndMarker(lat, lng) {
+                if (endMarker) map.removeLayer(endMarker);
+                const icon = L.divIcon({
+                    html: '<div style="background:#e74c3c;width:18px;height:18px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 6px rgba(0,0,0,0.5);"></div>',
+                    iconSize: [18, 18],
+                    className: 'end-marker'
+                });
+                endMarker = L.marker([lat, lng], { icon }).addTo(map).bindPopup('🏁 Arrivo');
+            }
+
+            function updateRecordingInfo() {
+                ptsSpan.textContent = `📍 Punti: ${trackPoints.length}`;
+                distSpan.textContent = `📏 Distanza: ${formatDistance(totalDistance)}`;
+            }
+
+            // ========================================
+            //  11. SALVATAGGIO PERCORSO
+            // ========================================
+            function saveCurrentTrack() {
+                if (trackPoints.length < 2) {
+                    alert('Percorso troppo breve. Cammina almeno un po\'!');
+                    return;
+                }
+                const name = trackNameInput.value.trim() || `Percorso del ${new Date().toLocaleString()}`;
+                const track = {
+                    id: Date.now().toString() + Math.random().toString(36).slice(2, 6),
+                    name: name,
+                    timestamp: new Date().toISOString(),
+                    points: trackPoints.slice(),
+                    distance: totalDistance,
+                    color: generateColor(savedTracks.length),
+                    startMarker: startMarker ? startMarker.getLatLng() : null,
+                    endMarker: endMarker ? endMarker.getLatLng() : null,
+                };
+                savedTracks.push(track);
+                saveTracksToStorage();
+
+                drawTrack(track, true);
+                renderTrackList();
+
+                // Resetta
+                if (currentTrackPolyline) {
+                    map.removeLayer(currentTrackPolyline);
+                    currentTrackPolyline = null;
+                }
+                if (currentPositionMarker) {
+                    map.removeLayer(currentPositionMarker);
+                    currentPositionMarker = null;
+                }
+                if (startMarker) {
+                    map.removeLayer(startMarker);
+                    startMarker = null;
+                }
+                if (endMarker) {
+                    map.removeLayer(endMarker);
+                    endMarker = null;
+                }
+                trackPoints = [];
+                totalDistance = 0;
+                pointCounter = 0;
+                updateRecordingInfo();
+                btnSave.disabled = true;
+                trackNameInput.value = '';
+                clearDraft();
+
+                const bounds = L.latLngBounds(track.points);
+                map.fitBounds(bounds, { padding: [30, 30] });
+
+                const toast = document.createElement('div');
+                toast.style.cssText =
+                    'position:fixed;bottom:200px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:#fff;padding:8px 20px;border-radius:30px;z-index:9999;font-size:14px;font-weight:bold;pointer-events:none;transition:opacity 0.5s;';
+                toast.textContent = '✅ Percorso salvato!';
+                document.body.appendChild(toast);
+                setTimeout(() => { toast.style.opacity = '0'; }, 2000);
+                setTimeout(() => { document.body.removeChild(toast); }, 2800);
+            }
+
+            // ========================================
+            //  12. RECUPERO BOZZA
+            // ========================================
+            function resumeDraft() {
+                const draft = loadDraft();
+                if (!draft) {
+                    alert('Nessuna bozza trovata.');
+                    return;
+                }
+                if (!confirm('Riprendere la bozza salvata automaticamente?')) return;
+
+                // Svuota tutto
+                if (currentTrackPolyline) {
+                    map.removeLayer(currentTrackPolyline);
+                    currentTrackPolyline = null;
+                }
+                if (currentPositionMarker) {
+                    map.removeLayer(currentPositionMarker);
+                    currentPositionMarker = null;
+                }
+                if (startMarker) {
+                    map.removeLayer(startMarker);
+                    startMarker = null;
+                }
+                if (endMarker) {
+                    map.removeLayer(endMarker);
+                    endMarker = null;
+                }
+                if (watchId) {
+                    navigator.geolocation.clearWatch(watchId);
+                    watchId = null;
+                }
+                isRecording = false;
+                btnStartStop.textContent = '▶️ Inizia';
+                btnStartStop.classList.remove('recording');
+                trackNameInput.disabled = false;
+
+                // Ripristina punti
+                trackPoints = draft.points.slice();
+                totalDistance = 0;
+                for (let i = 1; i < trackPoints.length; i++) {
+                    const prev = trackPoints[i - 1];
+                    const curr = trackPoints[i];
+                    totalDistance += haversineDistance(prev.lat, prev.lng, curr.lat, curr.lng);
+                }
+                pointCounter = trackPoints.length;
+
+                // Ridisegna polyline
+                updateTempPolyline();
+
+                // Marker partenza
+                if (trackPoints.length > 0) {
+                    const first = trackPoints[0];
+                    addStartMarker(first.lat, first.lng);
+                }
+
+                // Marker arrivo (ultimo punto)
+                if (trackPoints.length >= 2) {
+                    const last = trackPoints[trackPoints.length - 1];
+                    addEndMarker(last.lat, last.lng);
+                }
+
+                // Aggiorna info
+                updateRecordingInfo();
+
+                // Salva nome
+                if (draft.name) {
+                    trackNameInput.value = draft.name;
+                }
+
+                btnSave.disabled = false;
+                clearDraft();
+
+                // Centra sulla bozza
+                if (trackPoints.length > 0) {
+                    const bounds = L.latLngBounds(trackPoints);
+                    map.fitBounds(bounds, { padding: [30, 30] });
+                }
+            }
+
+            // ========================================
+            //  13. EVENTI UI
+            // ========================================
+            locateBtn.addEventListener('click', function() {
+                requestLocation(true, true);
+            });
+
+            loadingRetryBtn.addEventListener('click', function() {
+                requestLocation(true, true);
+            });
+
+            resumeDraftBtn.addEventListener('click', resumeDraft);
+
+            btnStartStop.addEventListener('click', function() {
+                if (isRecording) {
+                    stopRecording();
+                } else {
+                    // Controlla se esiste una bozza e chiedi se riprenderla
+                    const draft = loadDraft();
+                    if (draft && draft.points && draft.points.length > 0) {
+                        if (confirm('Hai una bozza non salvata. Vuoi riprenderla?')) {
+                            resumeDraft();
+                            return;
+                        } else {
+                            clearDraft();
+                        }
+                    }
+                    startRecording();
                 }
             });
-            legendDiv.innerHTML += '<span style="background-color:red; border-radius: 4px; width:16px; height:4px;"></span> Sentiero<br>';
-        }
 
-        // ========================
-        // 3. GEOLOCALIZZAZIONE
-        // ========================
-        const locateBtn = document.getElementById('locateBtn');
-        let userMarker = null, userCircle = null;
+            btnSave.addEventListener('click', saveCurrentTrack);
+            btnClearTracks.addEventListener('click', clearAllTracks);
+            btnExportGeoJSON.addEventListener('click', exportGeoJSON);
+            btnExportGPX.addEventListener('click', exportGPX);
 
-        function onLocationFound(e) {
-            const { latitude: lat, longitude: lng, accuracy: radius } = e;
-            map.setView([lat, lng], 16);
-            if (userMarker) map.removeLayer(userMarker);
-            if (userCircle) map.removeLayer(userCircle);
-            const userIcon = L.divIcon({
-                html: `<div style="background-color: #2196f3; width: 20px; height: 20px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 4px black;"></div>`,
-                iconSize: [20, 20],
-                className: 'user-marker'
-            });
-            userMarker = L.marker([lat, lng], { icon: userIcon }).addTo(map).bindPopup('Sei qui').openPopup();
-            userCircle = L.circle([lat, lng], { radius, color: '#2196f3', weight: 1, fillOpacity: 0.1 }).addTo(map);
-        }
+            // ========================================
+            //  14. CARICAMENTO INIZIALE
+            // ========================================
+            loadTracks();
+            redrawAllTracks();
+            renderTrackList();
 
-        function onLocationError(e) {
-            let message = '';
-            switch (e.code) {
-                case 1: message = 'Permesso negato. Attiva la geolocalizzazione.'; break;
-                case 2: message = 'Posizione non disponibile.'; break;
-                case 3: message = 'Timeout della richiesta.'; break;
-                default: message = 'Errore sconosciuto.';
+            // Centra su tracce se presenti
+            if (savedTracks.length > 0) {
+                const allPoints = savedTracks.flatMap(t => t.points);
+                if (allPoints.length > 0) {
+                    const bounds = L.latLngBounds(allPoints);
+                    map.fitBounds(bounds, { padding: [40, 40] });
+                }
             }
-            alert('⚠️ ' + message);
-        }
 
-        locateBtn.addEventListener('click', () => {
-            if (!navigator.geolocation) {
-                alert('Il tuo browser non supporta la geolocalizzazione.');
-                return;
+            // Controlla se esiste una bozza all'avvio
+            const draft = loadDraft();
+            if (draft && draft.points && draft.points.length > 0) {
+                resumeDraftBtn.style.display = 'inline-block';
+                // Mostra un toast discreto
+                setTimeout(() => {
+                    const toast = document.createElement('div');
+                    toast.style.cssText =
+                        'position:fixed;top:80px;left:50%;transform:translateX(-50%);background:rgba(243,156,18,0.9);color:#fff;padding:8px 20px;border-radius:30px;z-index:9999;font-size:13px;font-weight:500;pointer-events:none;transition:opacity 0.5s;';
+                    toast.textContent = '📂 Hai una bozza salvata! Clicca su "Riprendi bozza" nel pannello.';
+                    document.body.appendChild(toast);
+                    setTimeout(() => { toast.style.opacity = '0'; }, 4000);
+                    setTimeout(() => { document.body.removeChild(toast); }, 4800);
+                }, 1000);
             }
-            locateBtn.textContent = '📍 Ricerca...';
-            locateBtn.disabled = true;
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    locateBtn.textContent = '📍 La mia posizione';
-                    locateBtn.disabled = false;
-                    onLocationFound({
-                        latitude: position.coords.latitude,
-                        longitude: position.coords.longitude,
-                        accuracy: position.coords.accuracy
-                    });
-                },
-                (error) => {
-                    locateBtn.textContent = '📍 La mia posizione';
-                    locateBtn.disabled = false;
-                    onLocationError(error);
-                },
-                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-            );
-        });
 
-        // ========================
-        // 4. OFFLINE DETECTION
-        // ========================
-        function checkOffline() {
-            const offlineMsg = document.getElementById('offlineMsg');
-            offlineMsg.style.display = navigator.onLine ? 'none' : 'block';
-        }
-        window.addEventListener('online', checkOffline);
-        window.addEventListener('offline', checkOffline);
+            // Richiesta posizione automatica
+            setTimeout(() => {
+                requestLocation(true, true);
+            }, 300);
 
-        // ========================
-        // 5. CARICAMENTO MARKER E AVVIO
-        // ========================
-        initMap();
-        addSentieroFromGeoJSON();
-        checkOffline();
+            // ========================================
+            //  15. PWA – INSTALLAZIONE
+            // ========================================
+            (function pwaSetup() {
+                const installContainer = document.getElementById('installContainer');
+                const installBtn = document.getElementById('installAppBtn');
+                let deferredPrompt = null;
 
-        fetch('markers.json')
-            .then(response => response.json())
-            .then(data => {
-                if (!data.length) throw new Error('Nessun marker');
-                const typesSet = new Set();
-                data.forEach(m => {
-                    let tipologia = m.tipologia;
-                    if (tipologia === 'opera' || tipologia === 'opere') tipologia = 'opera';
-                    else if (tipologia === 'servizio' || tipologia === 'servizi') tipologia = 'servizio';
-                    else if (tipologia === 'storico' || tipologia === 'Punti storici') tipologia = 'storico';
-                    else tipologia = 'opera';
-                    m.tipologiaNorm = tipologia;
-                    typesSet.add(tipologia);
-                });
-                const uniqueTypes = Array.from(typesSet);
+                function isAppInstalled() {
+                    if (window.matchMedia('(display-mode: standalone)').matches) return true;
+                    if (window.navigator.standalone === true) return true;
+                    return false;
+                }
 
-                data.forEach(m => {
-                    const lat = parseFloat(m.lat);
-                    const lng = parseFloat(m.lng);
-                    if (isNaN(lat) || isNaN(lng)) return;
-                    const tipologia = m.tipologiaNorm;
-                    const color = colorMap[tipologia] || '#cccccc';
-                    const icon = getColoredIcon(color);
-                    const popupContent = `
-                        <strong>${escapeHtml(m.title)}</strong><br>
-                        <em>Tipologia:</em> ${categoryNames[tipologia] || tipologia}<br>
-                        ${m.thumbnail ? `<img src="${escapeHtml(m.thumbnail)}" style="width:100px; max-width:100%; margin-top:5px; border-radius:4px;"><br>` : ''}
-                        <p>${escapeHtml(m.excerpt || (m.content ? m.content.substring(0,150) : ''))}...</p>
-                    `;
-                    const marker = L.marker([lat, lng], { icon }).bindPopup(popupContent);
-                    allMarkers.push({ marker, tipologia });
+                if (isAppInstalled()) {
+                    installContainer.style.display = 'none';
+                }
+
+                window.addEventListener('beforeinstallprompt', (e) => {
+                    if (isAppInstalled()) return;
+                    e.preventDefault();
+                    deferredPrompt = e;
+                    if (window.innerWidth <= 768) {
+                        installContainer.style.display = 'block';
+                    }
                 });
 
-                buildFilters();
-                buildLegend(uniqueTypes);
-                filterMarkers('Tutti');
-            })
-            .catch(err => {
-                console.warn(err);
-                document.getElementById('counter').innerHTML = 'ℹ️ Nessun punto d’interesse (solo sentiero)';
-                document.getElementById('legend').innerHTML = '<strong>Legenda</strong><br><span style="background-color:red;"></span> Sentiero';
-                buildFilters();
-            });
+                installBtn.addEventListener('click', async () => {
+                    if (deferredPrompt) {
+                        deferredPrompt.prompt();
+                        const result = await deferredPrompt.userChoice;
+                        if (result.outcome === 'accepted') {
+                            installContainer.style.display = 'none';
+                        }
+                        deferredPrompt = null;
+                    } else {
+                        if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+                            alert(
+                                '📲 Per installare su iPhone/iPad:\n\n' +
+                                '1. Tocca l\'icona "Condividi" (quadrato con freccia).\n' +
+                                '2. Scorri e seleziona "Aggiungi alla schermata Home".\n' +
+                                '3. Tocca "Aggiungi".'
+                            );
+                        } else {
+                            alert('Apri questo link da Chrome e tocca "Installa" per aggiungere alla home.');
+                        }
+                    }
+                });
 
-        function escapeHtml(str) {
-            if (!str) return '';
-            return str.replace(/[&<>]/g, m => m === '&' ? '&amp;' : m === '<' ? '&lt;' : '&gt;');
-        }
+                window.addEventListener('appinstalled', () => {
+                    installContainer.style.display = 'none';
+                    deferredPrompt = null;
+                });
 
-        if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/sentieri-nellarte-map/sw.js');
-        }
+                if (window.innerWidth <= 768 && !isAppInstalled()) {
+                    setTimeout(() => {
+                        if (installContainer.style.display !== 'block') {
+                            const isMobile = /Android|iPhone|iPad|iPod|BlackBerry/i.test(navigator.userAgent);
+                            if (isMobile) {
+                                installContainer.style.display = 'block';
+                            }
+                        }
+                    }, 3000);
+                }
+            })();
 
-// ========================
-// INSTALLAZIONE PWA
-// ========================
-const installContainer = document.getElementById('installContainer');
-const installBtn = document.getElementById('installAppBtn');
-let deferredPrompt = null;
-
-// --- 1. Controllo se l'app è già installata ---
-function isAppInstalled() {
-    if (window.matchMedia('(display-mode: standalone)').matches) return true;
-    if (window.navigator.standalone === true) return true;
-    return false;
-}
-
-if (isAppInstalled()) {
-    installContainer.style.display = 'none';
-}
-
-// --- 2. Evento beforeinstallprompt ---
-window.addEventListener('beforeinstallprompt', (e) => {
-    if (isAppInstalled()) return;
-    e.preventDefault();
-    deferredPrompt = e;
-    if (window.innerWidth <= 768) {
-        installContainer.style.display = 'block';
-    }
-});
-
-// --- 3. Click sul pulsante ---
-installBtn.addEventListener('click', async () => {
-    if (deferredPrompt) {
-        deferredPrompt.prompt();
-        const result = await deferredPrompt.userChoice;
-        if (result.outcome === 'accepted') {
-            installContainer.style.display = 'none';
-        }
-        deferredPrompt = null;
-    } else {
-        // iOS o browser senza supporto
-        showIOSInstructions();
-    }
-});
-
-// --- 4. App installata con successo ---
-window.addEventListener('appinstalled', () => {
-    installContainer.style.display = 'none';
-    deferredPrompt = null;
-});
-
-// --- 5. Istruzioni per iOS ---
-function showIOSInstructions() {
-    if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
-        alert(
-            '📲 Per installare l\'app su iPhone/iPad:\n\n' +
-            '1. Tocca l\'icona "Condividi" (quadrato con freccia).\n' +
-            '2. Scorri e seleziona "Aggiungi alla schermata Home".\n' +
-            '3. Tocca "Aggiungi".'
-        );
-    } else {
-        alert('Apri questo link da Chrome e tocca "Installa" per aggiungere alla home.');
-    }
-}
-
-// --- 6. Mostra il pulsante se su mobile ma beforeinstallprompt non si attiva ---
-if (window.innerWidth <= 768 && !isAppInstalled()) {
-    setTimeout(() => {
-        if (installContainer.style.display !== 'block') {
-            const isMobile = /Android|iPhone|iPad|iPod|BlackBerry/i.test(navigator.userAgent);
-            if (isMobile) {
-                installContainer.style.display = 'block';
+            // ========================================
+            //  16. SERVICE WORKER
+            // ========================================
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('./sw.js').catch(() => {});
             }
-        }
-    }, 3000);
-}
-</script>
+
+            console.log('🗺️ Mappa Bianca Maker caricata!');
+            console.log('📂 Percorsi salvati:', savedTracks.length);
+            console.log('📍 Richiesta posizione automatica con overlay.');
+
+        })();
+    </script>
+
 </body>
 </html>
